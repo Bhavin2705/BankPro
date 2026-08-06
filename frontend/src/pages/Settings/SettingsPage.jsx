@@ -53,6 +53,12 @@ const Settings = ({ user, onUserUpdate }) => {
   }, [user?._id]);
 
   useEffect(() => {
+    if (user?.preferences?.language && user.preferences.language !== preferencesData.language) {
+      setPreferencesData((prev) => ({ ...prev, language: user.preferences.language }));
+    }
+  }, [user?.preferences?.language]);
+
+  useEffect(() => {
     const loadSettingsData = async () => {
       setLoading((prev) => ({ ...prev, bootstrap: true }));
 
@@ -92,9 +98,9 @@ const Settings = ({ user, onUserUpdate }) => {
 
           setPreferencesData((prev) => ({
             ...prev,
-            currency: settings.preferences?.currency ?? prev.currency,
-            language: settings.preferences?.language ?? prev.language,
-            theme: settings.preferences?.theme ?? prev.theme,
+            currency: prev.currency || settings.preferences?.currency || 'INR',
+            language: prev.language || user?.preferences?.language || settings.preferences?.language || 'en',
+            theme: prev.theme || user?.preferences?.theme || settings.preferences?.theme || 'light',
             notifications: {
               email: settings.preferences?.notifications?.email ?? prev.notifications.email,
               sms: settings.preferences?.notifications?.sms ?? prev.notifications.sms,
