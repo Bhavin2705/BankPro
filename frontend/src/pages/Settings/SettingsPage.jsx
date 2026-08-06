@@ -542,6 +542,19 @@ const Settings = ({ user, onUserUpdate }) => {
       document.documentElement.setAttribute('data-theme', value === 'dark' ? 'dark' : 'light');
     }
 
+    if (name === 'language') {
+      document.documentElement.lang = value || 'en';
+      if (onUserUpdate) {
+        onUserUpdate((prevUser) => ({
+          ...prevUser,
+          preferences: {
+            ...(prevUser?.preferences || {}),
+            language: value
+          }
+        }));
+      }
+    }
+
     setPreferencesData((prev) => ({
       ...prev,
       [name]: value
@@ -552,6 +565,16 @@ const Settings = ({ user, onUserUpdate }) => {
     const initial = getInitialPreferencesData(user);
     setPreferencesData(initial);
     document.documentElement.setAttribute('data-theme', initial.theme === 'dark' ? 'dark' : 'light');
+    document.documentElement.lang = initial.language || 'en';
+    if (onUserUpdate) {
+      onUserUpdate((prevUser) => ({
+        ...prevUser,
+        preferences: {
+          ...(prevUser?.preferences || {}),
+          language: initial.language
+        }
+      }));
+    }
     showSuccess('Restored saved preferences');
   };
 

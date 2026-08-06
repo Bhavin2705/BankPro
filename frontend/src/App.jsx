@@ -99,8 +99,18 @@ function App() {
   };
 
   const handleUserUpdate = (updatedUser) => {
-    setUser(updatedUser);
-    applyTheme(updatedUser);
+    setUser((prevUser) => {
+      const nextUser = typeof updatedUser === 'function' ? updatedUser(prevUser) : updatedUser;
+      applyTheme(nextUser);
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem('bank_auth_user', JSON.stringify(nextUser));
+        } catch {
+          // ignore
+        }
+      }
+      return nextUser;
+    });
   };
 
   // ──────────────────────────────────────────────
