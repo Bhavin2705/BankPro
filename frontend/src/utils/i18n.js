@@ -26,7 +26,24 @@ export const TRANSLATIONS = {
     theme: 'Theme',
     emailNotifications: 'Email Notifications',
     smsNotifications: 'SMS Notifications',
-    pushNotifications: 'Push Notifications'
+    pushNotifications: 'Push Notifications',
+    // Tabs
+    tabProfile: 'Profile',
+    tabBank: 'Bank',
+    tabSecurity: 'Security',
+    tabPreferences: 'Preferences',
+    tabAccounts: 'Accounts',
+    tabSessions: 'Sessions',
+    // Preferences Form & Banners
+    preferencesCustomization: 'Preferences & Live Customization',
+    livePreviewActiveNotice: 'Live Preview Active: Changing Theme, Language, or Currency applies instantly on your screen. Click "Save Preferences" to save permanently.',
+    notificationChannels: 'Notification Channels',
+    receiveEmail: 'Receive updates via email',
+    receiveSms: 'Receive updates via SMS',
+    receivePush: 'Receive real-time alerts',
+    resetPreview: 'Reset Preview',
+    lightModeOption: 'Light Mode',
+    darkModeOption: 'Dark Mode'
   },
   hi: {
     dashboard: 'डैशबोर्ड',
@@ -55,7 +72,24 @@ export const TRANSLATIONS = {
     theme: 'थीम',
     emailNotifications: 'ईमेल सूचनाएं',
     smsNotifications: 'एसएमएस सूचनाएं',
-    pushNotifications: 'पुश सूचनाएं'
+    pushNotifications: 'पुश सूचनाएं',
+    // Tabs
+    tabProfile: 'प्रोफ़ाइल',
+    tabBank: 'बैंक विवरण',
+    tabSecurity: 'सुरक्षा',
+    tabPreferences: 'प्राथमिकताएं',
+    tabAccounts: 'संबंधित खाते',
+    tabSessions: 'लॉगिन सत्र',
+    // Preferences Form & Banners
+    preferencesCustomization: 'प्राथमिकताएं और लाइव अनुकूलन',
+    livePreviewActiveNotice: 'लाइव पूर्वावलोकन सक्रिय: थीम, भाषा या मुद्रा बदलने पर तुरंत आपकी स्क्रीन पर लागू होता है। स्थायी रूप से सहेजने के लिए "प्राथमिकताएं सहेजें" पर क्लिक करें।',
+    notificationChannels: 'सूचना चैनल',
+    receiveEmail: 'ईमेल के माध्यम से अपडेट प्राप्त करें',
+    receiveSms: 'एसएमएस के माध्यम से अपडेट प्राप्त करें',
+    receivePush: 'वास्तविक समय अलर्ट प्राप्त करें',
+    resetPreview: 'पूर्वावलोकन रीसेट करें',
+    lightModeOption: 'लाइट मोड',
+    darkModeOption: 'डार्क मोड'
   },
   es: {
     dashboard: 'Panel Principal',
@@ -82,9 +116,26 @@ export const TRANSLATIONS = {
     currency: 'Moneda',
     language: 'Idioma',
     theme: 'Tema',
-    emailNotifications: 'Notificaciones por correo',
+    emailNotifications: 'Notificaciones por Correo',
     smsNotifications: 'Notificaciones por SMS',
-    pushNotifications: 'Notificaciones Push'
+    pushNotifications: 'Notificaciones Push',
+    // Tabs
+    tabProfile: 'Perfil',
+    tabBank: 'Banco',
+    tabSecurity: 'Seguridad',
+    tabPreferences: 'Preferencias',
+    tabAccounts: 'Cuentas',
+    tabSessions: 'Sesiones',
+    // Preferences Form & Banners
+    preferencesCustomization: 'Preferencias y Personalización en Vivo',
+    livePreviewActiveNotice: 'Vista Previa Activa: Cambiar Tema, Idioma o Moneda se aplica al instante en pantalla. Haga clic en "Guardar Preferencias" para guardar.',
+    notificationChannels: 'Canales de Notificación',
+    receiveEmail: 'Recibir actualizaciones por correo electrónico',
+    receiveSms: 'Recibir actualizaciones por SMS',
+    receivePush: 'Recibir alertas en tiempo real',
+    resetPreview: 'Restablecer Vista Previa',
+    lightModeOption: 'Modo Claro',
+    darkModeOption: 'Modo Oscuro'
   },
   fr: {
     dashboard: 'Tableau de bord',
@@ -113,7 +164,24 @@ export const TRANSLATIONS = {
     theme: 'Thème',
     emailNotifications: 'Notifications par e-mail',
     smsNotifications: 'Notifications par SMS',
-    pushNotifications: 'Notifications Push'
+    pushNotifications: 'Notifications Push',
+    // Tabs
+    tabProfile: 'Profil',
+    tabBank: 'Banque',
+    tabSecurity: 'Sécurité',
+    tabPreferences: 'Préférences',
+    tabAccounts: 'Comptes',
+    tabSessions: 'Sessions',
+    // Preferences Form & Banners
+    preferencesCustomization: 'Préférences et Personnalisation en Direct',
+    livePreviewActiveNotice: 'Aperçu en Direct Actif: Modifier le Thème, la Langue ou la Devise s\'applique instantanément. Cliquez sur "Enregistrer les Préférences" pour valider.',
+    notificationChannels: 'Canaux de Notification',
+    receiveEmail: 'Recevoir des mises à jour par e-mail',
+    receiveSms: 'Recevoir des mises à jour par SMS',
+    receivePush: 'Recevoir des alertes en temps réel',
+    resetPreview: 'Réinitialiser l\'Aperçu',
+    lightModeOption: 'Mode Clair',
+    darkModeOption: 'Mode Sombre'
   }
 };
 

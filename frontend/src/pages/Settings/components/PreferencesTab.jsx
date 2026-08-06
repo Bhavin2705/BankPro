@@ -1,26 +1,23 @@
-import { Bell, Eye, Globe, Moon, RefreshCw, Sparkles, Sun } from 'lucide-react';
+import { Bell, Eye, RefreshCw, Sparkles } from 'lucide-react';
+import { getTranslation } from '../../../utils/i18n';
 
 const LANGUAGE_SAMPLES = {
   en: {
-    title: 'English Interface Preview',
     welcome: 'Welcome to BankPro! Manage your balances, transfers, and security settings.',
     nav: ['Dashboard', 'Transactions', 'Cards', 'Security', 'Settings'],
     tag: 'English (US / UK)'
   },
   hi: {
-    title: 'हिंदी इंटरफेस पूर्वावलोकन (Hindi Interface Preview)',
     welcome: 'BankPro में आपका स्वागत है! अपना बैलेंस, ट्रांसफर और सुरक्षा सेटिंग्स प्रबंधित करें।',
     nav: ['डैशबोर्ड', 'लेन-देन', 'कार्ड्स', 'सुरक्षा', 'सेटिंग्स'],
     tag: 'हिंदी (Hindi)'
   },
   es: {
-    title: 'Vista Previa en Español (Spanish Interface Preview)',
     welcome: '¡Bienvenido a BankPro! Gestione sus saldos, transferencias y seguridad.',
     nav: ['Panel', 'Transacciones', 'Tarjetas', 'Seguridad', 'Ajustes'],
     tag: 'Español (Spanish)'
   },
   fr: {
-    title: 'Aperçu Interface Français (French Interface Preview)',
     welcome: 'Bienvenue sur BankPro! Gérez vos soldes, virements et paramètres de sécurité.',
     nav: ['Tableau de bord', 'Transactions', 'Cartes', 'Sécurité', 'Paramètres'],
     tag: 'Français (French)'
@@ -41,13 +38,14 @@ const PreferencesTab = ({
   handleResetPreferences,
   loading
 }) => {
-  const sample = LANGUAGE_SAMPLES[preferencesData.language] || LANGUAGE_SAMPLES.en;
+  const lang = preferencesData.language || 'en';
+  const sample = LANGUAGE_SAMPLES[lang] || LANGUAGE_SAMPLES.en;
 
   return (
     <div>
       <h3 className="settings-section-title">
         <Bell size={20} />
-        Preferences & Live Customization
+        {getTranslation('preferencesCustomization', lang)}
       </h3>
 
       {/* Live Preview Banner */}
@@ -67,14 +65,14 @@ const PreferencesTab = ({
       >
         <Eye size={20} style={{ color: '#2563eb', flexShrink: 0 }} />
         <div style={{ flex: 1, fontSize: '0.9rem' }}>
-          <strong>Live Preview Active:</strong> Changing Theme, Language, or Currency applies <strong>instantly on your screen</strong>. Click <em>"Save Preferences"</em> to save permanently.
+          {getTranslation('livePreviewActiveNotice', lang)}
         </div>
       </div>
 
       <form onSubmit={handlePreferencesUpdate}>
         <div className="settings-grid-250 settings-preferences-grid">
           <div className="form-group">
-            <label className="form-label">Currency</label>
+            <label className="form-label">{getTranslation('currency', lang)}</label>
             <select
               name="currency"
               className="form-input"
@@ -89,7 +87,7 @@ const PreferencesTab = ({
           </div>
 
           <div className="form-group">
-            <label className="form-label">Language</label>
+            <label className="form-label">{getTranslation('language', lang)}</label>
             <select
               name="language"
               className="form-input"
@@ -104,15 +102,15 @@ const PreferencesTab = ({
           </div>
 
           <div className="form-group">
-            <label className="form-label">Theme</label>
+            <label className="form-label">{getTranslation('theme', lang)}</label>
             <select
               name="theme"
               className="form-input"
               value={preferencesData.theme}
               onChange={handlePreferencesChange}
             >
-              <option value="light">Light Mode</option>
-              <option value="dark">Dark Mode</option>
+              <option value="light">{getTranslation('lightModeOption', lang)}</option>
+              <option value="dark">{getTranslation('darkModeOption', lang)}</option>
             </select>
           </div>
         </div>
@@ -161,12 +159,12 @@ const PreferencesTab = ({
         </div>
 
         <div className="settings-panel settings-top-gap-lg">
-          <h4 className="settings-panel-title">Notification Channels</h4>
+          <h4 className="settings-panel-title">{getTranslation('notificationChannels', lang)}</h4>
           <div className="settings-list-grid">
             <div className="settings-row-between">
               <div>
-                <div className="settings-item-title">Email Notifications</div>
-                <div className="settings-item-subtitle">Receive updates via email</div>
+                <div className="settings-item-title">{getTranslation('emailNotifications', lang)}</div>
+                <div className="settings-item-subtitle">{getTranslation('receiveEmail', lang)}</div>
               </div>
               <input
                 type="checkbox"
@@ -179,8 +177,8 @@ const PreferencesTab = ({
 
             <div className="settings-row-between">
               <div>
-                <div className="settings-item-title">SMS Notifications</div>
-                <div className="settings-item-subtitle">Receive updates via SMS</div>
+                <div className="settings-item-title">{getTranslation('smsNotifications', lang)}</div>
+                <div className="settings-item-subtitle">{getTranslation('receiveSms', lang)}</div>
               </div>
               <input
                 type="checkbox"
@@ -193,8 +191,8 @@ const PreferencesTab = ({
 
             <div className="settings-row-between">
               <div>
-                <div className="settings-item-title">Push Notifications</div>
-                <div className="settings-item-subtitle">Receive real-time alerts</div>
+                <div className="settings-item-title">{getTranslation('pushNotifications', lang)}</div>
+                <div className="settings-item-subtitle">{getTranslation('receivePush', lang)}</div>
               </div>
               <input
                 type="checkbox"
@@ -209,7 +207,7 @@ const PreferencesTab = ({
 
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', alignItems: 'center' }}>
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Saving...' : 'Save Preferences'}
+            {loading ? 'Saving...' : getTranslation('savePreferences', lang)}
           </button>
           <button
             type="button"
@@ -217,7 +215,7 @@ const PreferencesTab = ({
             className="btn btn-secondary"
             style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
           >
-            <RefreshCw size={16} /> Reset Preview
+            <RefreshCw size={16} /> {getTranslation('resetPreview', lang)}
           </button>
         </div>
       </form>

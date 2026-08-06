@@ -565,7 +565,7 @@ const Settings = ({ user, onUserUpdate }) => {
       </div>
 
       <div className="card">
-        <SettingsTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        <SettingsTabs activeTab={activeTab} setActiveTab={setActiveTab} currentLang={currentLang} />
 
         {error && (
           <div className="error-message settings-flash">
