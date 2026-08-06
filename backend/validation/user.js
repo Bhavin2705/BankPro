@@ -36,7 +36,6 @@ exports.validateProfileUpdate = [
     body('occupation').optional().isLength({ max: 50 }).withMessage('Occupation must not exceed 50 characters'),
     body('income').optional().isFloat({ min: 0 }).withMessage('Income must be a positive number'),
     body('currency').optional().isLength({ max: 3 }).withMessage('Currency code must be 3 characters'),
-    body('language').optional().isLength({ max: 2 }).withMessage('Language code must be 2 characters'),
     body('theme').optional().isIn(['light', 'dark']).withMessage('Theme must be either light or dark'),
     body('bankName').optional().isLength({ max: 50 }).withMessage('Bank name must not exceed 50 characters'),
     body('ifscCode').optional().isLength({ max: 11 }).withMessage('IFSC code must not exceed 11 characters'),

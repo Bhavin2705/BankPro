@@ -326,37 +326,39 @@
    Dark Theme V2 (Website-grade palette, light mode untouched)
    ========================================================= */
 [data-theme="dark"] {
-  --bg-primary: radial-gradient(1200px 600px at 10% -10%, #1b2c49 0%, #0b1424 45%, #070d18 100%);
-  --bg-secondary: #0f1b2d;
-  --bg-tertiary: #16243a;
-  --bg-quaternary: #1b2d46;
-  --bg-hover: #223754;
-  --primary-color: #45b6ff;
-  --text-accent: #52c6ff;
-  --text-primary: #e7eefb;
-  --text-secondary: #a7b7cf;
-  --border-color: #294260;
-  --border: #294260;
-  --border-light: #36557a;
-  --shadow: rgba(1, 8, 20, 0.55);
-  --shadow-light: rgba(1, 8, 20, 0.4);
-  --sidebar-bg: #0a1322;
-  --sidebar-text: #e4ecfb;
-  --sidebar-hover: #18273d;
-  --info-bg: #12243d;
-  --info-border: #2f5d8f;
-  --info-text: #c1d8f7;
+  --bg-primary: #0b1329;
+  --bg-secondary: #132238;
+  --bg-tertiary: #1c2d42;
+  --bg-quaternary: #243852;
+  --bg-hover: #21354f;
+  --primary-color: #38bdf8;
+  --text-accent: #38bdf8;
+  --text-primary: #f0f6ff;
+  --text-secondary: #94a3b8;
+  --border-color: #233854;
+  --border: #233854;
+  --border-light: #334b6c;
+  --shadow: rgba(0, 0, 0, 0.5);
+  --shadow-light: rgba(0, 0, 0, 0.3);
+  --sidebar-bg: #070d1d;
+  --sidebar-text: #f0f6ff;
+  --sidebar-hover: #132238;
+  --info-bg: #0e2439;
+  --info-border: #1d4ed8;
+  --info-text: #93c5fd;
+  --success: #10b981;
+  --error: #f43f5e;
 }
 
 [data-theme="dark"] .sidebar {
-  background: linear-gradient(180deg, #091322 0%, #0d1a2d 100%);
-  border-right: 1px solid rgba(82, 198, 255, 0.16);
+  background: linear-gradient(180deg, #070d1d 0%, #0d1a2d 100%);
+  border-right: 1px solid rgba(56, 189, 248, 0.2);
 }
 
 [data-theme="dark"] .sidebar-nav-link:hover,
 [data-theme="dark"] .sidebar-nav-link.active {
-  background: rgba(82, 198, 255, 0.2);
-  color: #7dd5ff;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
 }
 
 [data-theme="dark"] .calendar-day:hover:not(.calendar-day-disabled) {

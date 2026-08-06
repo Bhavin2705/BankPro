@@ -249,12 +249,16 @@
 
 /* Dark mode adjustments */
 [data-theme="dark"] .auth-layout-sidebar {
-  background: linear-gradient(180deg, #091322 0%, #0d1a2d 100%);
-  border-right: 1px solid rgba(82, 198, 255, 0.16);
+  background: linear-gradient(180deg, #070d1d 0%, #0d1a2d 100%);
+  border-right: 1px solid rgba(56, 189, 248, 0.2);
 }
 
 [data-theme="dark"] .auth-layout-nav-link:hover,
 [data-theme="dark"] .auth-layout-nav-link.active {
-  background: rgba(82, 198, 255, 0.2);
-  color: #7dd5ff;
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--primary-color);
+}
+
+[data-theme="dark"] .auth-layout-main {
+  background: var(--bg-primary);
 }

@@ -1,4 +1,4 @@
-﻿.settings-page {
+.settings-page {
   position: relative;
 }
 
@@ -533,4 +533,48 @@
 .settings-empty-text {
   font-size: 0.9rem;
   color: var(--text-secondary);
+}
+
+/* Settings Dark Theme rules */
+[data-theme="dark"] .settings-container h1,
+[data-theme="dark"] .settings-title,
+[data-theme="dark"] .settings-panel-title,
+[data-theme="dark"] .settings-password-title,
+[data-theme="dark"] .settings-item-title,
+[data-theme="dark"] .settings-session-value {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .settings-subtitle,
+[data-theme="dark"] .settings-item-subtitle,
+[data-theme="dark"] .settings-security-subtitle,
+[data-theme="dark"] .settings-session-label,
+[data-theme="dark"] .settings-empty-text {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .settings-nav {
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .settings-nav-btn {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .settings-nav-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+
+[data-theme="dark"] .settings-nav-btn.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+[data-theme="dark"] .settings-card,
+[data-theme="dark"] .settings-session-card,
+[data-theme="dark"] .settings-empty-box {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 16px var(--shadow);
 }

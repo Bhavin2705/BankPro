@@ -1,4 +1,4 @@
-﻿.payments-tabs {
+.payments-tabs {
   display: flex;
   gap: 1rem;
   margin-bottom: 2rem;
@@ -336,15 +336,17 @@
 /* Payments polish */
 [data-theme="dark"] .bills-header h1,
 [data-theme="dark"] .recurring-header h1 {
-  color: #eaf1ff;
+  color: var(--text-primary);
 }
 
 [data-theme="dark"] .bills-header p,
 [data-theme="dark"] .recurring-header p {
-  color: #a9bedc !important;
+  color: var(--text-secondary) !important;
 }
 
-[data-theme="dark"] .transaction-item {
-  border-color: #2e4a69 !important;
-  background: #13243b !important;
+[data-theme="dark"] .transaction-item,
+[data-theme="dark"] .bill-card,
+[data-theme="dark"] .recurring-card {
+  border-color: var(--border-color) !important;
+  background: var(--bg-secondary) !important;
 }

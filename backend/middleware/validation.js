@@ -194,8 +194,7 @@ const validateUserUpdatePayload = [
 ];
 
 const validateSettingsPreferencesUpdate = [
-    body('theme').optional().isIn(['light', 'dark', 'system']).withMessage('Invalid theme'),
-    body('language').optional().isString().withMessage('Invalid language'),
+    body('theme').optional().isIn(['light', 'dark']).withMessage('Invalid theme'),
     body('notifications.email').optional().isBoolean().withMessage('Must be boolean'),
     body('notifications.push').optional().isBoolean().withMessage('Must be boolean'),
     body('notifications.sms').optional().isBoolean().withMessage('Must be boolean'),

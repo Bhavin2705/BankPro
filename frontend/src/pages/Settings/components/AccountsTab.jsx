@@ -1,15 +1,14 @@
 import { CreditCard } from 'lucide-react';
-import { getTranslation } from '../../../utils/i18n';
 
-const AccountsTab = ({ lang = 'en', linkedAccounts, loading, onRefresh, onToggleCardStatus }) => (
+const AccountsTab = ({ linkedAccounts, loading, onRefresh, onToggleCardStatus }) => (
   <div>
     <div className="settings-header-row">
       <h3 className="settings-section-title settings-no-margin">
         <CreditCard size={20} />
-        {getTranslation('linkedAccountsCards', lang)}
+        Linked Accounts & Cards
       </h3>
       <button type="button" className="btn btn-secondary" onClick={() => onRefresh(true)} disabled={loading}>
-        {loading ? getTranslation('refreshing', lang) : getTranslation('refresh', lang)}
+        {loading ? 'Refreshing...' : 'Refresh'}
       </button>
     </div>
 
@@ -25,10 +24,10 @@ const AccountsTab = ({ lang = 'en', linkedAccounts, loading, onRefresh, onToggle
                 <div>
                   <div className="settings-account-name">{card.cardHolder || card.cardName || 'Card'}</div>
                   <div className="settings-account-meta">{(card.cardType || 'Credit Card').toUpperCase()} | ******{card.cardNumber?.slice(-4)}</div>
-                  <div className="settings-account-expiry">{getTranslation('expires', lang)}: {card.expiryMonth}/{card.expiryYear}</div>
+                  <div className="settings-account-expiry">Expires: {card.expiryMonth}/{card.expiryYear}</div>
                   {hasPendingRequest && (
                     <div className="settings-account-expiry">
-                      {getTranslation('requestPending', lang)}: {card?.statusRequest?.requestedStatus === 'inactive' ? getTranslation('lock', lang) : getTranslation('unlock', lang)}
+                      Request pending: {card?.statusRequest?.requestedStatus === 'inactive' ? 'lock' : 'unlock'}
                     </div>
                   )}
                 </div>
@@ -42,15 +41,15 @@ const AccountsTab = ({ lang = 'en', linkedAccounts, loading, onRefresh, onToggle
                       onClick={() => onToggleCardStatus(card)}
                     >
                       {card.status === 'blocked'
-                        ? getTranslation('contactBank', lang)
+                        ? 'Contact Bank'
                         : hasPendingRequest
-                          ? getTranslation('requestPendingBtn', lang)
+                          ? 'Request Pending'
                           : card.status === 'active'
-                            ? getTranslation('requestLock', lang)
-                            : getTranslation('requestUnlock', lang)}
+                            ? 'Request Lock'
+                            : 'Request Unlock'}
                     </button>
                   ) : (
-                    <span className="settings-closed-note">{getTranslation('permanentlyClosed', lang)}</span>
+                    <span className="settings-closed-note">Permanently closed</span>
                   )}
                 </div>
               </div>
@@ -60,7 +59,7 @@ const AccountsTab = ({ lang = 'en', linkedAccounts, loading, onRefresh, onToggle
       </div>
     ) : (
       <div className="settings-empty-box">
-        <div className="settings-empty-text">{getTranslation('noLinkedCards', lang)}</div>
+        <div className="settings-empty-text">No linked cards found.</div>
       </div>
     )}
   </div>

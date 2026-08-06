@@ -1,4 +1,4 @@
-﻿[data-theme="dark"] .transaction-item,
+[data-theme="dark"] .transaction-item,
 [data-theme="dark"] .user-item,
 [data-theme="dark"] .notification-item {
   border-color: var(--border-light);
@@ -172,19 +172,19 @@
 
 /* Notifications polish */
 [data-theme="dark"] .notifications-page .notifications-list-wrap {
-  border-color: #315273 !important;
-  background: #112236 !important;
+  border-color: var(--border-color) !important;
+  background: var(--bg-secondary) !important;
 }
 
 [data-theme="dark"] .notifications-page .notifications-row.is-unread {
-  background: rgba(82, 198, 255, 0.1) !important;
+  background: rgba(56, 189, 248, 0.12) !important;
 }
 
 [data-theme="dark"] .notifications-page .notifications-row.is-read {
-  background: rgba(18, 35, 57, 0.95) !important;
+  background: var(--bg-secondary) !important;
 }
 
 [data-theme="dark"] .notifications-page .notifications-mark-all-btn {
-  background: linear-gradient(135deg, #1b69b3 0%, #1297d8 52%, #38c8ff 100%) !important;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
   color: #fff !important;
 }

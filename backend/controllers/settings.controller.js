@@ -17,22 +17,19 @@ const getSettings = async (req, res) => {
             bank: { bankName: user.bankDetails?.bankName, ifscCode: user.bankDetails?.ifscCode, branchName: user.bankDetails?.branchName, accountNumber: user.accountNumber },
             security: { isEmailVerified: user.security?.isEmailVerified, isPhoneVerified: user.security?.isPhoneVerified, twoFactorEnabled: user.security?.twoFactorEnabled, lastLogin: user.security?.lastLogin },
             kyc: { status: user.kyc?.status || 'unverified', idType: user.kyc?.idType, idNumberMasked: user.kyc?.idNumberMasked, documentUrls: user.kyc?.documentUrls, submittedAt: user.kyc?.submittedAt, reviewedAt: user.kyc?.reviewedAt, rejectionReason: user.kyc?.rejectionReason },
-            preferences: { currency: user.preferences?.currency || 'INR', language: user.preferences?.language || 'en', theme: user.preferences?.theme || 'light', notifications: { email: user.preferences?.notifications?.email !== false, sms: user.preferences?.notifications?.sms !== false, push: user.preferences?.notifications?.push !== false } }
+            preferences: { currency: user.preferences?.currency || 'INR', theme: user.preferences?.theme || 'light', notifications: { email: user.preferences?.notifications?.email !== false, sms: user.preferences?.notifications?.sms !== false, push: user.preferences?.notifications?.push !== false } }
         }
     });
 };
 
 const updatePreferences = async (req, res) => {
     // Isolated payload extraction: ignore all other injected payload parameters (like isAdmin, userId, role, etc.)
-    const { emailNotifications, smsNotifications, pushNotifications, theme, currency, language, notifications } = req.body || {};
+    const { emailNotifications, smsNotifications, pushNotifications, theme, currency, notifications } = req.body || {};
     const updateData = {};
 
     // String De-contamination: append .trim() to string inputs
     if (typeof currency === 'string' && currency.trim()) {
         updateData['preferences.currency'] = currency.trim();
-    }
-    if (typeof language === 'string' && language.trim()) {
-        updateData['preferences.language'] = language.trim();
     }
     if (typeof theme === 'string' && theme.trim()) {
         updateData['preferences.theme'] = theme.trim();

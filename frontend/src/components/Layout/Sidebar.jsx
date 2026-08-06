@@ -19,7 +19,6 @@ import { useMemo, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { canAccessAdminFeatures } from '../../utils/auth';
 import { API_BASE_URL } from '../../utils/api';
-import { getTranslation } from '../../utils/i18n';
 import '../../styles/pages/Sidebar.css';
 
 const BASE_NAV_ITEMS = [
@@ -45,34 +44,11 @@ const Sidebar = ({ user, onLogout, darkMode, toggleDarkMode }) => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const lang = user?.preferences?.language || 'en';
-
   const navItems = useMemo(() => {
-    const rawItems = canAccessAdminFeatures(user)
+    return canAccessAdminFeatures(user)
       ? [...BASE_NAV_ITEMS, ...ADMIN_NAV_ITEMS]
       : BASE_NAV_ITEMS;
-
-    const keyMap = {
-      dashboard: 'dashboard',
-      transactions: 'transactions',
-      cards: 'cards',
-      payments: 'payments',
-      security: 'security',
-      statements: 'statements',
-      'currency-exchange': 'currencyExchange',
-      notifications: 'notifications',
-      settings: 'settings',
-      users: 'userManagement',
-      kyc: 'kycVerifications',
-      'card-controls': 'cardControls',
-      'admin-banks': 'manageBanks'
-    };
-
-    return rawItems.map((item) => ({
-      ...item,
-      label: getTranslation(keyMap[item.id] || item.id, lang)
-    }));
-  }, [user, lang]);
+  }, [user]);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -181,7 +157,7 @@ const Sidebar = ({ user, onLogout, darkMode, toggleDarkMode }) => {
             className="sidebar-logout-btn"
           >
             <LogOut size={18} />
-            <span>{getTranslation('logout', lang)}</span>
+            <span>Logout</span>
           </button>
         </div>
       </aside>

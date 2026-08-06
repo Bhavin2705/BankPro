@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, loginWithAccount, logout, getMe, updateDetails, updatePassword, forgotPassword, resetPassword, refreshToken, verifyResetToken } = require('../services/auth.service');
+const { register, login, loginWithAccount, logout, getMe, updateDetails, updatePassword, forgotPassword, resetPassword, refreshToken, verifyResetToken, getSecurityQuestionsForReset, resetPasswordWithSecurityQuestions } = require('../services/auth.service');
 const { protect } = require('../middleware/auth');
 const { validateUserRegistration, validateUserLogin, validatePasswordReset, validatePasswordResetToken, validatePasswordUpdate, validateProfileUpdate } = require('../middleware/validation');
 const { apiLimiter, authLimiter, passwordResetLimiter } = require('../middleware/rateLimit');
@@ -10,6 +10,8 @@ router.post('/register', authLimiter, validateUserRegistration, register);
 router.post('/login', authLimiter, validateUserLogin, login);
 router.post('/login-account', authLimiter, validateUserLogin, loginWithAccount);
 router.post('/forgotpassword', passwordResetLimiter, validatePasswordReset, forgotPassword);
+router.post('/forgotpassword/questions-lookup', passwordResetLimiter, getSecurityQuestionsForReset);
+router.post('/resetpassword/security-questions', passwordResetLimiter, resetPasswordWithSecurityQuestions);
 router.put('/resetpassword/:resettoken', passwordResetLimiter, validatePasswordResetToken, resetPassword);
 router.get('/resetpassword/:resettoken', passwordResetLimiter, verifyResetToken);
 router.post('/refresh', authLimiter, refreshToken);

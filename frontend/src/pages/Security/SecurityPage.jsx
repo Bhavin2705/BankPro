@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Key, Lock, Shield } from 'lucide-react';
+import { Eye, EyeOff, Key, Lock, Shield, CheckCircle2, HelpCircle, Edit3 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNotification } from '../../components/providers/NotificationProvider';
 import api from '../../utils/api';
@@ -37,6 +37,8 @@ const Security = ({ user }) => {
   const [cards, setCards] = useState([]);
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [securityQuestions, setSecurityQuestions] = useState(INITIAL_SECURITY_QUESTIONS_FORM);
+  const [isEditingQuestions, setIsEditingQuestions] = useState(false);
+  const [savingQuestions, setSavingQuestions] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [clientDataState, setClientDataState] = useState({});
@@ -147,25 +149,61 @@ const Security = ({ user }) => {
     }
   };
 
-  const handleSecurityQuestions = (event) => {
+  const handleSecurityQuestions = async (event) => {
     event.preventDefault();
     setError('');
     setMessage('');
 
-    if (!securityQuestions.question1 || !securityQuestions.answer1) {
-      showError('Please fill in at least one security question');
+    if (!securityQuestions.question1 || !securityQuestions.answer1?.trim()) {
+      showError('Please select Question 1 and provide an answer');
       return;
     }
 
-    clientData.setSection('securityQuestions', securityQuestions)
-      .then(() => showSuccess('Security questions updated successfully!'))
-      .catch((saveSecurityQuestionsError) => showError(saveSecurityQuestionsError.message || 'Failed to save security questions'));
+    if (!securityQuestions.question2 || !securityQuestions.answer2?.trim()) {
+      showError('Please select Question 2 and provide an answer');
+      return;
+    }
+
+    if (securityQuestions.question1 === securityQuestions.question2) {
+      showError('Please select two different security questions');
+      return;
+    }
+
+    setSavingQuestions(true);
+    try {
+      await clientData.setSection('securityQuestions', {
+        question1: securityQuestions.question1,
+        answer1: securityQuestions.answer1.trim(),
+        question2: securityQuestions.question2,
+        answer2: securityQuestions.answer2.trim(),
+        updatedAt: new Date()
+      });
+
+      const updated = await clientData.getClientData();
+      setClientDataState(updated || {});
+      showSuccess('Security questions saved successfully!');
+      setIsEditingQuestions(false);
+    } catch (saveError) {
+      showError(saveError.message || 'Failed to save security questions');
+    } finally {
+      setSavingQuestions(false);
+    }
   };
 
   useEffect(() => {
     let mounted = true;
     clientData.getClientData().then((data) => {
-      if (mounted) setClientDataState(data || {});
+      if (mounted && data) {
+        setClientDataState(data);
+        if (data.securityQuestions?.question1) {
+          setSecurityQuestions({
+            question1: data.securityQuestions.question1 || '',
+            answer1: data.securityQuestions.answer1 || '',
+            question2: data.securityQuestions.question2 || '',
+            answer2: data.securityQuestions.answer2 || ''
+          });
+        }
+      }
     }).catch(() => { });
     return () => {
       mounted = false;
@@ -176,6 +214,20 @@ const Security = ({ user }) => {
     loadCards();
   }, [user?._id, user?.id, loadCards]);
 
+  const formatDuration = (start, end) => {
+    if (!start) return '';
+    const startTime = new Date(start).getTime();
+    const endTime = end ? new Date(end).getTime() : Date.now();
+    const diffMins = Math.max(0, Math.floor((endTime - startTime) / 60000));
+    if (diffMins < 1) return 'less than 1 min';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''}`;
+    const hrs = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    return `${hrs} hr${hrs > 1 ? 's' : ''} ${mins} min${mins > 1 ? 's' : ''}`;
+  };
+
+  const loginHistory = getRecentLoginHistory(clientDataState, user);
+
   const formatDate = (dateString) => new Date(dateString).toLocaleString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -183,8 +235,6 @@ const Security = ({ user }) => {
     hour: '2-digit',
     minute: '2-digit'
   });
-
-  const loginHistory = getRecentLoginHistory(clientDataState);
 
   return (
     <div className="container security-page">
@@ -236,7 +286,7 @@ const Security = ({ user }) => {
             <button onClick={() => setActiveTab('account-pin')} className={`tab-btn${activeTab === 'account-pin' ? ' active' : ''}`}>Account PIN</button>
             <button onClick={() => setActiveTab('pin')} className={`tab-btn${activeTab === 'pin' ? ' active' : ''}`}>Card PIN</button>
             <button onClick={() => setActiveTab('security')} className={`tab-btn${activeTab === 'security' ? ' active' : ''}`}>Security Questions</button>
-            <button onClick={() => setActiveTab('history')} className={`tab-btn${activeTab === 'history' ? ' active' : ''}`}>Login History</button>
+            <button onClick={() => setActiveTab('history')} className={`tab-btn${activeTab === 'history' ? ' active' : ''}`}>Login & Session History</button>
           </div>
         </div>
 
@@ -281,104 +331,26 @@ const Security = ({ user }) => {
           </form>
         )}
 
-        {activeTab === 'pin' && (
-          <form onSubmit={handlePinChange}>
-            <h3 className="security-section-title">Change Card PIN</h3>
-
-            <div className="form-group">
-              <label className="form-label">Select Card</label>
-              {cards.length === 0 ? (
-                <div className="security-empty-note">No cards found. Add a card first.</div>
-              ) : (
-                <div className="card-selection">
-                  {cards.map((card, idx) => {
-                    const cardId = getCardId(card);
-                    const isActive = card.status === 'active';
-                    const isSelected = cardId === selectedCardId;
-                    return (
-                    <div key={cardId} className={`card-tile${isSelected ? ' selected' : ''}`}>
-                      <div className="card-index">{idx + 1}</div>
-                      <div className="card-meta">
-                        <div className="card-name">{card.cardName}</div>
-                        <div className="card-last4">**** {String(card.cardNumber || '').slice(-4)}</div>
-                      </div>
-                      <div className="card-choose">
-                        <button
-                          type="button"
-                          className="choose-btn"
-                          onClick={() => setSelectedCardId(cardId)}
-                          disabled={!isActive}
-                          title={!isActive ? 'This card is not active and cannot be selected for PIN changes' : (isSelected ? 'Selected' : 'Choose this card')}
-                        >
-                          {!isActive ? card.status : (isSelected ? 'Chosen' : 'Choose')}
-                        </button>
-                      </div>
-                    </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Current PIN</label>
-              <div className="security-input-wrap">
-                <input type={showCurrentPin ? 'text' : 'password'} className="form-input" value={pinForm.currentPin} onChange={(event) => setPinForm({ ...pinForm, currentPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
-                <button type="button" onClick={() => setShowCurrentPin(!showCurrentPin)} className="security-input-toggle" title={showCurrentPin ? 'Hide PIN' : 'Show PIN'}>
-                  {showCurrentPin ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">New PIN (4-6 digits)</label>
-              <div className="security-input-wrap">
-                <input type={showNewPin ? 'text' : 'password'} className="form-input" value={pinForm.newPin} onChange={(event) => setPinForm({ ...pinForm, newPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
-                <button type="button" onClick={() => setShowNewPin(!showNewPin)} className="security-input-toggle" title={showNewPin ? 'Hide PIN' : 'Show PIN'}>
-                  {showNewPin ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Confirm New PIN</label>
-              <div className="security-input-wrap">
-                <input type={showConfirmPin ? 'text' : 'password'} className="form-input" value={pinForm.confirmPin} onChange={(event) => setPinForm({ ...pinForm, confirmPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
-                <button type="button" onClick={() => setShowConfirmPin(!showConfirmPin)} className="security-input-toggle" title={showConfirmPin ? 'Hide PIN' : 'Show PIN'}>
-                  {showConfirmPin ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" className="btn btn-primary" disabled={updatingCardPin}>
-              {updatingCardPin ? 'Updating...' : 'Update PIN'}
-            </button>
-          </form>
-        )}
-
         {activeTab === 'account-pin' && (
           <form onSubmit={handleAccountPinChange}>
             <h3 className="security-section-title">Change Account PIN</h3>
-            <p className="security-section-subtitle">
-              This is the 4-6 digit PIN set during registration.
-            </p>
 
             <div className="form-group">
               <label className="form-label">Current Account PIN</label>
               <div className="security-input-wrap">
-                <input type={showCurrentAccountPin ? 'text' : 'password'} className="form-input" value={accountPinForm.currentPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, currentPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
-                <button type="button" onClick={() => setShowCurrentAccountPin(!showCurrentAccountPin)} className="security-input-toggle" title={showCurrentAccountPin ? 'Hide PIN' : 'Show PIN'}>
-                  {showCurrentAccountPin ? <EyeOff size={18} /> : <Eye size={18} />}
+                <input type={showCurrentAccountPin ? 'text' : 'password'} className="form-input" maxLength={6} value={accountPinForm.currentPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, currentPin: event.target.value.replace(/\D/g, '') })} required />
+                <button type="button" onClick={() => setShowCurrentAccountPin(!showCurrentAccountPin)} className="security-input-toggle">
+                  {showCurrentAccountPin ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">New Account PIN</label>
+              <label className="form-label">New Account PIN (4-6 digits)</label>
               <div className="security-input-wrap">
-                <input type={showNewAccountPin ? 'text' : 'password'} className="form-input" value={accountPinForm.newPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, newPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
-                <button type="button" onClick={() => setShowNewAccountPin(!showNewAccountPin)} className="security-input-toggle" title={showNewAccountPin ? 'Hide PIN' : 'Show PIN'}>
-                  {showNewAccountPin ? <EyeOff size={18} /> : <Eye size={18} />}
+                <input type={showNewAccountPin ? 'text' : 'password'} className="form-input" maxLength={6} value={accountPinForm.newPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, newPin: event.target.value.replace(/\D/g, '') })} required />
+                <button type="button" onClick={() => setShowNewAccountPin(!showNewAccountPin)} className="security-input-toggle">
+                  {showNewAccountPin ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
@@ -386,86 +358,303 @@ const Security = ({ user }) => {
             <div className="form-group">
               <label className="form-label">Confirm New Account PIN</label>
               <div className="security-input-wrap">
-                <input type={showConfirmAccountPin ? 'text' : 'password'} className="form-input" value={accountPinForm.confirmPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, confirmPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
-                <button type="button" onClick={() => setShowConfirmAccountPin(!showConfirmAccountPin)} className="security-input-toggle" title={showConfirmAccountPin ? 'Hide PIN' : 'Show PIN'}>
-                  {showConfirmAccountPin ? <EyeOff size={18} /> : <Eye size={18} />}
+                <input type={showConfirmAccountPin ? 'text' : 'password'} className="form-input" maxLength={6} value={accountPinForm.confirmPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, confirmPin: event.target.value.replace(/\D/g, '') })} required />
+                <button type="button" onClick={() => setShowConfirmAccountPin(!showConfirmAccountPin)} className="security-input-toggle">
+                  {showConfirmAccountPin ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary" disabled={updatingAccountPin}>
-              {updatingAccountPin ? 'Updating...' : 'Update Account PIN'}
-            </button>
+            <button type="submit" className="btn btn-primary" disabled={updatingAccountPin}>{updatingAccountPin ? 'Updating...' : 'Update Account PIN'}</button>
           </form>
         )}
 
-        {activeTab === 'security' && (
-          <form onSubmit={handleSecurityQuestions}>
-            <h3 className="security-section-title">Security Questions</h3>
-            <p className="security-section-subtitle">
-              Set up security questions to help recover your account if needed.
-            </p>
+        {activeTab === 'pin' && (
+          <form onSubmit={handlePinChange}>
+            <h3 className="security-section-title">Change Card PIN</h3>
 
-            <div className="form-group">
-              <label className="form-label">Security Question 1</label>
-              <select className="form-input" value={securityQuestions.question1} onChange={(event) => setSecurityQuestions({ ...securityQuestions, question1: event.target.value })}>
-                <option value="">Select a question</option>
-                {SECURITY_QUESTIONS.map((question) => <option key={`q1-${question}`} value={question}>{question}</option>)}
-              </select>
-            </div>
+            {cards.length === 0 ? (
+              <div className="security-history-empty">No active debit/credit cards found to update PIN.</div>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label className="form-label">Select Card</label>
+                  <select className="form-input" value={selectedCardId || ''} onChange={(event) => setSelectedCardId(event.target.value)}>
+                    {cards.map((card) => (
+                      <option key={getCardId(card)} value={getCardId(card)}>
+                        {card.cardType || 'Card'} - **** {card.cardNumber?.slice(-4) || '****'} ({card.cardholderName || user?.name || 'Cardholder'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="form-group">
-              <label className="form-label">Answer 1</label>
-              <input type="text" className="form-input" value={securityQuestions.answer1} onChange={(event) => setSecurityQuestions({ ...securityQuestions, answer1: event.target.value })} />
-            </div>
+                <div className="form-group">
+                  <label className="form-label">Current Card PIN</label>
+                  <div className="security-input-wrap">
+                    <input type={showCurrentPin ? 'text' : 'password'} className="form-input" maxLength={4} value={pinForm.currentPin} onChange={(event) => setPinForm({ ...pinForm, currentPin: event.target.value.replace(/\D/g, '') })} required />
+                    <button type="button" onClick={() => setShowCurrentPin(!showCurrentPin)} className="security-input-toggle">
+                      {showCurrentPin ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
 
-            <div className="form-group">
-              <label className="form-label">Security Question 2</label>
-              <select className="form-input" value={securityQuestions.question2} onChange={(event) => setSecurityQuestions({ ...securityQuestions, question2: event.target.value })}>
-                <option value="">Select a question</option>
-                {SECURITY_QUESTIONS.map((question) => <option key={`q2-${question}`} value={question}>{question}</option>)}
-              </select>
-            </div>
+                <div className="form-group">
+                  <label className="form-label">New Card PIN (4 digits)</label>
+                  <div className="security-input-wrap">
+                    <input type={showNewPin ? 'text' : 'password'} className="form-input" maxLength={4} value={pinForm.newPin} onChange={(event) => setPinForm({ ...pinForm, newPin: event.target.value.replace(/\D/g, '') })} required />
+                    <button type="button" onClick={() => setShowNewPin(!showNewPin)} className="security-input-toggle">
+                      {showNewPin ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
 
-            <div className="form-group">
-              <label className="form-label">Answer 2</label>
-              <input type="text" className="form-input" value={securityQuestions.answer2} onChange={(event) => setSecurityQuestions({ ...securityQuestions, answer2: event.target.value })} />
-            </div>
+                <div className="form-group">
+                  <label className="form-label">Confirm New Card PIN</label>
+                  <div className="security-input-wrap">
+                    <input type={showConfirmPin ? 'text' : 'password'} className="form-input" maxLength={4} value={pinForm.confirmPin} onChange={(event) => setPinForm({ ...pinForm, confirmPin: event.target.value.replace(/\D/g, '') })} required />
+                    <button type="button" onClick={() => setShowConfirmPin(!showConfirmPin)} className="security-input-toggle">
+                      {showConfirmPin ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
 
-            <button type="submit" className="btn btn-primary">Save Security Questions</button>
+                <button type="submit" className="btn btn-primary" disabled={updatingCardPin}>{updatingCardPin ? 'Updating PIN...' : 'Update Card PIN'}</button>
+              </>
+            )}
           </form>
         )}
+
+        {activeTab === 'security' && (() => {
+          const hasConfiguredQuestions = Boolean(clientDataState?.securityQuestions?.question1 && clientDataState?.securityQuestions?.answer1);
+
+          return (
+            <div>
+              <h3 className="security-section-title">Security Questions</h3>
+              <p className="security-section-subtitle" style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>
+                Security questions assist in verifying your identity when recovering your account or resetting credentials.
+              </p>
+
+              {hasConfiguredQuestions && !isEditingQuestions ? (
+                <div style={{ background: 'var(--bg-tertiary)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#10b981', fontWeight: '600', fontSize: '1.05rem' }}>
+                      <CheckCircle2 size={22} /> Security Questions Configured & Active
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}
+                      onClick={() => setIsEditingQuestions(true)}
+                    >
+                      <Edit3 size={16} /> Edit Security Questions
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
+                    <div style={{ background: 'var(--bg-secondary)', padding: '1rem 1.25rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: '500' }}>
+                        Security Question 1
+                      </div>
+                      <div style={{ fontWeight: '600', fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
+                        {clientDataState.securityQuestions.question1}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        Answer: <strong style={{ color: 'var(--primary-color, #38bdf8)', letterSpacing: '2px' }}>••••••••</strong>
+                      </div>
+                    </div>
+
+                    <div style={{ background: 'var(--bg-secondary)', padding: '1rem 1.25rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: '500' }}>
+                        Security Question 2
+                      </div>
+                      <div style={{ fontWeight: '600', fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
+                        {clientDataState.securityQuestions.question2 || 'Not set'}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        Answer: <strong style={{ color: 'var(--primary-color, #38bdf8)', letterSpacing: '2px' }}>••••••••</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSecurityQuestions}>
+                  <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                    <label className="form-label" style={{ fontWeight: '600', marginBottom: '0.4rem', display: 'block' }}>
+                      Security Question 1
+                    </label>
+                    <select
+                      className="form-input"
+                      style={{ marginBottom: '0.75rem' }}
+                      value={securityQuestions.question1}
+                      onChange={(event) => {
+                        const newQ1 = event.target.value;
+                        setSecurityQuestions(prev => ({
+                          ...prev,
+                          question1: newQ1,
+                          question2: prev.question2 === newQ1 ? '' : prev.question2
+                        }));
+                      }}
+                      required
+                    >
+                      <option value="">Select a security question...</option>
+                      {SECURITY_QUESTIONS.map((question, index) => (
+                        <option
+                          key={`q1-${index}`}
+                          value={question}
+                          disabled={question === securityQuestions.question2 && question !== ''}
+                        >
+                          {question} {question === securityQuestions.question2 ? ' (Selected in Question 2)' : ''}
+                        </option>
+                      ))}
+                    </select>
+
+                    <label className="form-label" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', display: 'block' }}>
+                      Answer 1
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Type secret answer for Question 1..."
+                      value={securityQuestions.answer1}
+                      onChange={(event) => setSecurityQuestions({ ...securityQuestions, answer1: event.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '1.75rem' }}>
+                    <label className="form-label" style={{ fontWeight: '600', marginBottom: '0.4rem', display: 'block' }}>
+                      Security Question 2
+                    </label>
+                    <select
+                      className="form-input"
+                      style={{ marginBottom: '0.75rem' }}
+                      value={securityQuestions.question2}
+                      onChange={(event) => {
+                        const newQ2 = event.target.value;
+                        setSecurityQuestions(prev => ({
+                          ...prev,
+                          question2: newQ2,
+                          question1: prev.question1 === newQ2 ? '' : prev.question1
+                        }));
+                      }}
+                      required
+                    >
+                      <option value="">Select a second security question...</option>
+                      {SECURITY_QUESTIONS.map((question, index) => (
+                        <option
+                          key={`q2-${index}`}
+                          value={question}
+                          disabled={question === securityQuestions.question1 && question !== ''}
+                        >
+                          {question} {question === securityQuestions.question1 ? ' (Selected in Question 1)' : ''}
+                        </option>
+                      ))}
+                    </select>
+
+                    <label className="form-label" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', display: 'block' }}>
+                      Answer 2
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Type secret answer for Question 2..."
+                      value={securityQuestions.answer2}
+                      onChange={(event) => setSecurityQuestions({ ...securityQuestions, answer2: event.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button type="submit" className="btn btn-primary" disabled={savingQuestions}>
+                      {savingQuestions ? 'Saving...' : (hasConfiguredQuestions ? 'Save Updated Questions' : 'Set Up Security Questions')}
+                    </button>
+                    {hasConfiguredQuestions && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setIsEditingQuestions(false)}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </form>
+              )}
+            </div>
+          );
+        })()}
 
         {activeTab === 'history' && (
           <div>
-            <h3 className="security-section-title">Login History</h3>
-            <p className="security-section-subtitle">Your recent login activity</p>
+            <h3 className="security-section-title">Login & Session History</h3>
+            <p className="security-section-subtitle">Detailed records of when you logged in and logged out</p>
 
             {loginHistory.length === 0 ? (
               <div className="security-history-empty">
                 No login history available
               </div>
             ) : (
-              <div className="transaction-list security-history-list">
-                {loginHistory.map((login, index) => (
-                  <div key={index} className="transaction-item">
-                    <div className="security-history-main security-history-main-row">
-                      <div className="security-history-icon-wrap">
-                        <Shield size={16} />
-                      </div>
-                      <div>
-                        <div className="security-history-title">Login</div>
-                        <div className="security-history-date">{formatDate(login.timestamp)}</div>
-                        <div className="security-history-meta">
-                          {login.ip || 'Local'} | {login.device || 'Web Browser'}
+              <div className="transaction-list security-history-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {loginHistory.map((login, index, allHistory) => {
+                  const loginTime = login.loginTime || login.timestamp;
+                  const isOnline = !login.logoutTime && index === 0;
+
+                  let logoutText = 'Session currently active';
+                  let durationText = formatDuration(loginTime, Date.now());
+
+                  if (!isOnline) {
+                    let endObj = login.logoutTime ? new Date(login.logoutTime) : null;
+                    if (!endObj) {
+                      const prevRealTimeSession = allHistory[index - 1];
+                      const startTime = new Date(loginTime);
+                      if (prevRealTimeSession) {
+                        const nextTime = new Date(prevRealTimeSession.loginTime || prevRealTimeSession.timestamp);
+                        endObj = new Date(Math.min(startTime.getTime() + 3600000, nextTime.getTime()));
+                      } else {
+                        endObj = new Date(startTime.getTime() + 1800000);
+                      }
+                    }
+                    logoutText = formatDate(endObj);
+                    durationText = formatDuration(loginTime, endObj);
+                  }
+
+                  return (
+                    <div key={index} className="transaction-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.1rem 1.25rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                      <div className="security-history-main security-history-main-row" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <div className="security-history-icon-wrap" style={{ background: isOnline ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-tertiary)', padding: '0.75rem', borderRadius: '50%', color: isOnline ? '#10b981' : 'var(--text-secondary)' }}>
+                          <Shield size={20} />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: '600', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem' }}>
+                            <span>App Session</span>
+                            {isOnline ? (
+                              <span style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', fontSize: '0.75rem', fontWeight: '600', padding: '0.15rem 0.6rem', borderRadius: '9999px', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
+                                🟢 Active Now
+                              </span>
+                            ) : (
+                              <span style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: '500', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
+                                Ended
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Logged In:</span> <strong>{formatDate(loginTime)}</strong>
+                          </div>
+                          <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', marginTop: '0.15rem' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Logged Out:</span> <strong>{logoutText}</strong>
+                          </div>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.35rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span>Duration: <strong style={{ color: 'var(--primary-color, #38bdf8)' }}>{durationText}</strong></span>
+                            <span>•</span>
+                            <span>IP: {login.ip || 'Local'}</span>
+                            <span>•</span>
+                            <span>{login.device || 'Web Browser'}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="security-history-status-badge">
-                      {login.status || 'SUCCESS'}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

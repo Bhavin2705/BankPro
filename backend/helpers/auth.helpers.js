@@ -33,12 +33,74 @@ const appendLoginHistoryEntry = (user, req) => {
     const ip = (String(req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || req.socket?.remoteAddress || 'Unknown').trim();
     user.clientData = user.clientData || {};
     const hist = Array.isArray(user.clientData.loginHistory) ? user.clientData.loginHistory : [];
-    user.clientData.loginHistory = [...hist, { timestamp: new Date(), ip, device: req.headers['user-agent'] || 'Unknown', status: 'SUCCESS' }].slice(-10);
+
+    const now = new Date();
+    // Mark previous open session as ended at current time or max 1 hr after login
+    const updatedHist = hist.map(entry => {
+        const entryTime = new Date(entry.loginTime || entry.timestamp || now);
+        if (!entry.logoutTime) {
+            const sessionEnd = new Date(Math.min(now.getTime(), entryTime.getTime() + 3600000));
+            return {
+                ...entry,
+                loginTime: entryTime,
+                lastActiveTime: sessionEnd,
+                logoutTime: sessionEnd
+            };
+        }
+        return {
+            ...entry,
+            loginTime: entryTime
+        };
+    });
+
+    const newEntry = {
+        timestamp: now,
+        loginTime: now,
+        lastActiveTime: now,
+        logoutTime: null,
+        ip,
+        device: req.headers['user-agent'] || 'Unknown',
+        status: 'SUCCESS'
+    };
+    user.clientData.loginHistory = [...updatedHist, newEntry].slice(-15);
+};
+
+const sanitizeLoginHistory = (history) => {
+    if (!Array.isArray(history)) return [];
+    return history.map((entry, idx, arr) => {
+        const loginTime = new Date(entry.loginTime || entry.timestamp || Date.now());
+        const isLatest = idx === arr.length - 1;
+        if (!entry.logoutTime && !isLatest) {
+            const nextEntry = arr[idx + 1];
+            const nextTime = nextEntry ? new Date(nextEntry.loginTime || nextEntry.timestamp) : new Date(loginTime.getTime() + 1800000);
+            const logoutTime = new Date(Math.min(loginTime.getTime() + 3600000, nextTime.getTime()));
+            return { ...entry, loginTime, logoutTime, lastActiveTime: logoutTime };
+        }
+        return { ...entry, loginTime };
+    });
 };
 
 const setAuthCookies = (res, token, refreshToken) => { res.cookie('token', token, cookieOptions); res.cookie('refreshToken', refreshToken, refreshCookieOptions); };
 
-const buildAuthenticatedUserResponse = u => ({ _id: u._id, name: u.name, email: u.email, phone: u.phone, role: u.role, balance: u.balance, accountNumber: u.accountNumber, bankDetails: u.bankDetails, profile: u.profile, kyc: u.kyc, preferences: u.preferences, createdAt: u.createdAt, firstLogin: u.firstLogin });
+const buildAuthenticatedUserResponse = u => ({
+    _id: u._id,
+    name: u.name,
+    email: u.email,
+    phone: u.phone,
+    role: u.role,
+    balance: u.balance,
+    accountNumber: u.accountNumber,
+    bankDetails: u.bankDetails,
+    profile: u.profile,
+    kyc: u.kyc,
+    preferences: u.preferences,
+    createdAt: u.createdAt,
+    firstLogin: u.firstLogin,
+    clientData: {
+        ...(u.clientData || {}),
+        loginHistory: sanitizeLoginHistory(u.clientData?.loginHistory)
+    }
+});
 
 const redis = require('../config/redis');
 

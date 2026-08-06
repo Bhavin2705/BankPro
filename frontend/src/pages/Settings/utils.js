@@ -25,7 +25,6 @@ export const getInitialBankData = (user) => ({
 
 export const getInitialPreferencesData = (user) => ({
   currency: user.preferences?.currency || 'INR',
-  language: user.preferences?.language || 'en',
   theme: user.preferences?.theme || 'light',
   notifications: {
     email: user.preferences?.notifications?.email !== false,

@@ -153,6 +153,23 @@ const logout = async (req, res) => {
     if (token) await blacklistToken(token);
     if (refreshTokenStr) await blacklistToken(refreshTokenStr);
 
+    if (req.user) {
+        try {
+            const hist = Array.isArray(req.user.clientData?.loginHistory) ? req.user.clientData.loginHistory : [];
+            if (hist.length > 0) {
+                const lastIdx = hist.length - 1;
+                if (!hist[lastIdx].logoutTime) {
+                    hist[lastIdx].logoutTime = new Date();
+                    hist[lastIdx].lastActiveTime = new Date();
+                    req.user.markModified('clientData');
+                    await req.user.save({ validateBeforeSave: false });
+                }
+            }
+        } catch {
+            // non-blocking
+        }
+    }
+
     res.cookie('token', 'none', { expires: new Date(Date.now() + 1000), httpOnly: true });
     res.cookie('refreshToken', 'none', { expires: new Date(Date.now() + 1000), httpOnly: true });
     res.status(200).json({ success: true, message: 'User logged out successfully' });
@@ -202,6 +219,8 @@ module.exports = {
     forgotPassword: asyncHandler(passwordService.forgotPassword),
     resetPassword: asyncHandler(passwordService.resetPassword),
     verifyResetToken: asyncHandler(passwordService.verifyResetToken),
+    getSecurityQuestionsForReset: asyncHandler(passwordService.getSecurityQuestionsForReset),
+    resetPasswordWithSecurityQuestions: asyncHandler(passwordService.resetPasswordWithSecurityQuestions),
     getMe: profileService.getMe,
     updateDetails: profileService.updateDetails
 };

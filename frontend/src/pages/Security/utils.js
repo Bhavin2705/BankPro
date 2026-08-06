@@ -1,7 +1,7 @@
 export const SECURITY_QUESTIONS = [
   "What was your first pet's name?",
   'What city were you born in?',
-  'What was your first car?',
+  'What was the name of your first school?',
   "What is your mother's maiden name?"
 ];
 
@@ -88,7 +88,9 @@ export const validateAccountPinForm = (accountPinForm) => {
   return '';
 };
 
-export const getRecentLoginHistory = (clientDataState) => {
-  const history = clientDataState.loginHistory || [];
-  return history.slice(-10);
+export const getRecentLoginHistory = (clientDataState, user) => {
+  const history = (user?.clientData?.loginHistory?.length > 0)
+    ? user.clientData.loginHistory
+    : (clientDataState?.loginHistory || []);
+  return [...history].reverse();
 };

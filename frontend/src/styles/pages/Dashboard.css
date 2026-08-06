@@ -1,4 +1,4 @@
-﻿.dashboard-grid {
+.dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
@@ -327,7 +327,25 @@
 
 [data-theme="dark"] .card:hover,
 [data-theme="dark"] .stat-card:hover {
-  border-color: #3a6492;
+  border-color: var(--primary-color);
   box-shadow: 0 16px 34px var(--shadow);
+}
+
+[data-theme="dark"] .dashboard-title-main {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .dashboard-account-muted {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .dashboard-stat-icon-balance,
+[data-theme="dark"] .dashboard-stat-icon-activity {
+  color: var(--primary-color);
+}
+
+[data-theme="dark"] .dashboard-welcome-banner {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%);
+  border: 1px solid var(--border-color);
 }
 

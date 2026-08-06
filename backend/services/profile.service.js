@@ -20,7 +20,7 @@ const updateDetails = async (req, res) => {
         const raw = {
             name: req.body.name, email: req.body.email, phone: req.body.phone,
             'profile.dateOfBirth': req.body.dateOfBirth, 'profile.occupation': req.body.occupation, 'profile.income': req.body.income,
-            'preferences.currency': req.body.currency, 'preferences.language': req.body.language, 'preferences.theme': req.body.theme,
+            'preferences.currency': req.body.currency, 'preferences.theme': req.body.theme,
             'bankDetails.bankName': req.body.bankName, 'bankDetails.ifscCode': req.body.ifscCode, 'bankDetails.branchName': req.body.branchName
         };
 

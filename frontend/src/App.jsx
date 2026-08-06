@@ -193,7 +193,7 @@ function App() {
           setExchangeRates(res.rates);
         }
       } catch (err) {
-        
+        console.debug('Exchange rates unavailable:', err?.message || 'unknown error');
       }
     })();
   }, [user?._id, user?.preferences?.currency]);
@@ -266,40 +266,40 @@ function App() {
       <NotificationProvider>
         <SessionManager user={user} onLogout={handleLogout} />
         <Routes>
-          {/* Public / Auth routes */}
-          <Route path="/login" element={<AuthWrapper><Login onLogin={handleLogin} /></AuthWrapper>} />
-          <Route path="/register" element={<AuthWrapper><Register onLogin={handleLogin} /></AuthWrapper>} />
-          <Route path="/forgot-password" element={<AuthWrapper><ForgotPassword /></AuthWrapper>} />
-          <Route
-            path="/reset-password/:token"
-            element={
-              <AuthWrapper>
-                <ResetPassword onSuccess={() => window.location.href = '/password-reset-success'} />
-              </AuthWrapper>
-            }
-          />
-          <Route path="/password-reset-success" element={<AuthWrapper><PasswordResetSuccess /></AuthWrapper>} />
+            {/* Public / Auth routes */}
+            <Route path="/login" element={<AuthWrapper><Login onLogin={handleLogin} /></AuthWrapper>} />
+            <Route path="/register" element={<AuthWrapper><Register onLogin={handleLogin} /></AuthWrapper>} />
+            <Route path="/forgot-password" element={<AuthWrapper><ForgotPassword /></AuthWrapper>} />
+            <Route
+              path="/reset-password/:token"
+              element={
+                <AuthWrapper>
+                  <ResetPassword onSuccess={() => window.location.href = '/password-reset-success'} />
+                </AuthWrapper>
+              }
+            />
+            <Route path="/password-reset-success" element={<AuthWrapper><PasswordResetSuccess /></AuthWrapper>} />
 
-          {/* Protected routes with layout */}
-          <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard user={user} /></Layout></ProtectedRoute>} />
-          <Route path="/transactions" element={<ProtectedRoute><Layout><Transactions user={user} onUserUpdate={handleUserUpdate} /></Layout></ProtectedRoute>} />
-          <Route path="/cards" element={<ProtectedRoute><Layout><Cards user={user} /></Layout></ProtectedRoute>} />
-          <Route path="/payments" element={<ProtectedRoute><Layout><Payments user={user} onUserUpdate={handleUserUpdate} /></Layout></ProtectedRoute>} />
-          <Route path="/security" element={<ProtectedRoute><Layout><Security user={user} onUserUpdate={handleUserUpdate} /></Layout></ProtectedRoute>} />
-          <Route path="/statements" element={<ProtectedRoute><Layout><Statements user={user} /></Layout></ProtectedRoute>} />
-          <Route path="/currency-exchange" element={<ProtectedRoute><Layout><CurrencyExchange user={user} /></Layout></ProtectedRoute>} />
-          <Route path="/budget" element={<ProtectedRoute><Layout><Budget user={user} /></Layout></ProtectedRoute>} />
-          <Route path="/notifications" element={<ProtectedRoute><Layout><Notifications /></Layout></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Layout><Settings user={user} onUserUpdate={handleUserUpdate} /></Layout></ProtectedRoute>} />
+            {/* Protected routes with layout */}
+            <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard user={user} /></Layout></ProtectedRoute>} />
+            <Route path="/transactions" element={<ProtectedRoute><Layout><Transactions user={user} onUserUpdate={handleUserUpdate} /></Layout></ProtectedRoute>} />
+            <Route path="/cards" element={<ProtectedRoute><Layout><Cards user={user} /></Layout></ProtectedRoute>} />
+            <Route path="/payments" element={<ProtectedRoute><Layout><Payments user={user} onUserUpdate={handleUserUpdate} /></Layout></ProtectedRoute>} />
+            <Route path="/security" element={<ProtectedRoute><Layout><Security user={user} onUserUpdate={handleUserUpdate} /></Layout></ProtectedRoute>} />
+            <Route path="/statements" element={<ProtectedRoute><Layout><Statements user={user} /></Layout></ProtectedRoute>} />
+            <Route path="/currency-exchange" element={<ProtectedRoute><Layout><CurrencyExchange user={user} /></Layout></ProtectedRoute>} />
+            <Route path="/budget" element={<ProtectedRoute><Layout><Budget user={user} /></Layout></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><Layout><Notifications /></Layout></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Layout><Settings user={user} onUserUpdate={handleUserUpdate} /></Layout></ProtectedRoute>} />
 
-          {/* Admin routes */}
-          <Route path="/admin-banks" element={<ProtectedRoute adminOnly><Layout><AdminBanks /></Layout></ProtectedRoute>} />
-          <Route path="/admin-kyc" element={<ProtectedRoute adminOnly><Layout><AdminKyc /></Layout></ProtectedRoute>} />
-          <Route path="/users" element={<ProtectedRoute adminOnly><Layout><Users user={user} /></Layout></ProtectedRoute>} />
-          <Route path="/card-controls" element={<ProtectedRoute adminOnly><Layout><CardControls /></Layout></ProtectedRoute>} />
+            {/* Admin routes */}
+            <Route path="/admin-banks" element={<ProtectedRoute adminOnly><Layout><AdminBanks /></Layout></ProtectedRoute>} />
+            <Route path="/admin-kyc" element={<ProtectedRoute adminOnly><Layout><AdminKyc /></Layout></ProtectedRoute>} />
+            <Route path="/users" element={<ProtectedRoute adminOnly><Layout><Users user={user} /></Layout></ProtectedRoute>} />
+            <Route path="/card-controls" element={<ProtectedRoute adminOnly><Layout><CardControls /></Layout></ProtectedRoute>} />
 
-          {/* Fallback / root */}
-          <Route path="*" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+            {/* Fallback / root */}
+            <Route path="*" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
         </Routes>
       </NotificationProvider>
     </Router>

@@ -4,6 +4,7 @@ const User = require('../models/User');
 const { createInAppNotification } = require('../utils/notifications');
 const { KYC_UPLOAD_DIR } = require('../middleware/upload');
 const asyncHandler = require('../utils/asyncHandler');
+const { validateKycIdentity } = require('../utils/kycValidation');
 
 const maskIdNumber = v => {
     if (!v) return '';
@@ -19,9 +20,9 @@ const submitKyc = async (req, res) => {
         throw error;
     }
 
-    const idType = String(req.body.idType || '').trim().toLowerCase();
-    if (!['aadhaar', 'pan', 'passport', 'driver_license', 'other'].includes(idType)) {
-        const error = new Error('Invalid ID type');
+    const identity = validateKycIdentity(req.body.idType, req.body.idNumber);
+    if (!identity.valid) {
+        const error = new Error(identity.error);
         error.statusCode = 400;
         throw error;
     }
@@ -47,8 +48,8 @@ const submitKyc = async (req, res) => {
 
     user.kyc = {
         status: 'pending',
-        idType,
-        idNumberMasked: maskIdNumber(req.body.idNumber || ''),
+        idType: identity.idType,
+        idNumberMasked: maskIdNumber(identity.idNumber),
         documentUrls: files.map(f => `/uploads/kyc/${f.filename}`),
         submittedAt: new Date(),
         reviewedAt: null,

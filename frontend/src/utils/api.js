@@ -183,6 +183,8 @@ export const api = {
         updateDetails: (data) => apiRequest('/auth/updatedetails', { method: 'PUT', body: JSON.stringify(data) }),
         updatePassword: (data) => apiRequest('/auth/updatepassword', { method: 'PUT', body: JSON.stringify(data) }),
         forgotPassword: (data) => apiRequest('/auth/forgotpassword', { method: 'POST', body: JSON.stringify(data) }),
+        lookupSecurityQuestions: (email) => apiRequest('/auth/forgotpassword/questions-lookup', { method: 'POST', body: JSON.stringify({ email }) }),
+        resetPasswordWithSecurityQuestions: (data) => apiRequest('/auth/resetpassword/security-questions', { method: 'POST', body: JSON.stringify(data) }),
         resetPassword: (token, data) => apiRequest(`/auth/resetpassword/${token}`, { method: 'PUT', body: JSON.stringify(data) }),
         verifyResetToken: (token) => apiRequest(`/auth/resetpassword/${token}`, { method: 'GET' })
     },

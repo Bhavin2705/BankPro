@@ -298,46 +298,46 @@
 
 /* Transactions dark-mode readability */
 [data-theme="dark"] .transactions-title {
-  color: #eaf1ff;
+  color: var(--text-primary);
 }
 
 [data-theme="dark"] .transactions-new-action-btn {
-  background: linear-gradient(135deg, #1b69b3 0%, #1297d8 52%, #38c8ff 100%) !important;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
   color: #ffffff !important;
 }
 
 [data-theme="dark"] .transactions-balance-card,
 [data-theme="dark"] .transactions-list-item {
-  background: linear-gradient(180deg, #13253d 0%, #112036 100%) !important;
-  border: 1px solid #2f4f73 !important;
-  box-shadow: 0 10px 26px rgba(1, 8, 20, 0.45);
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 10px 26px var(--shadow);
 }
 
 [data-theme="dark"] .transactions-balance-value,
 [data-theme="dark"] .transactions-list-description {
-  color: #eaf1ff !important;
+  color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] .transactions-list-meta,
 [data-theme="dark"] .transactions-balance-card .text-gray-500 {
-  color: #a9bedc !important;
+  color: var(--text-secondary) !important;
 }
 
 [data-theme="dark"] .transactions-tabs {
-  border-bottom-color: #2c496a !important;
+  border-bottom-color: var(--border-color) !important;
 }
 
 [data-theme="dark"] .transactions-tab {
-  color: #a9bedc !important;
+  color: var(--text-secondary) !important;
 }
 
 [data-theme="dark"] .transactions-tab:hover {
-  color: #d9e8ff !important;
+  color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] .transactions-tab.text-blue-600,
 [data-theme="dark"] .transactions-tab.border-blue-600 {
-  color: #67ccff !important;
-  border-bottom-color: #67ccff !important;
+  color: var(--primary-color) !important;
+  border-bottom-color: var(--primary-color) !important;
 }
 

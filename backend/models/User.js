@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
     profile: { photoUrl: String, dateOfBirth: Date, address: { street: String, city: String, state: String, zipCode: String, country: String }, occupation: String, income: Number },
     kyc: {
         status: { type: String, enum: ['unverified', 'pending', 'verified', 'rejected'], default: 'unverified' },
-        idType: { type: String, enum: ['aadhaar', 'pan', 'passport', 'driver_license', 'other'] },
+        idType: { type: String, enum: ['aadhaar', 'pan', 'voter'] },
         idNumberMasked: String, documentUrls: [String], submittedAt: Date, reviewedAt: Date, reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, rejectionReason: String
     },
     security: {
@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
         loginAttempts: { type: Number, default: 0 }, lockUntil: Date, lastLogin: Date, passwordResetToken: String, passwordResetExpires: Date
     },
     preferences: {
-        currency: { type: String, default: 'INR' }, language: { type: String, default: 'en' },
+        currency: { type: String, default: 'INR' },
         notifications: { email: { type: Boolean, default: true }, sms: { type: Boolean, default: true }, push: { type: Boolean, default: true } },
         theme: { type: String, enum: ['light', 'dark'], default: 'light' }
     },

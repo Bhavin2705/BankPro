@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Eye, EyeOff, Key, Lock, Shield, QrCode, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Eye, EyeOff, Lock, Shield, QrCode, CheckCircle2, AlertCircle, X, Copy, Key, ArrowRight } from 'lucide-react';
 import { useNotification } from '../../../components/providers/NotificationProvider';
 import api from '../../../utils/api';
-import { getTranslation } from '../../../utils/i18n';
 
-const SecurityTab = ({ lang = 'en', user, twoFactorEnabled, onTwoFactorChange }) => {
+const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
   const { showSuccess, showError } = useNotification();
   const [secTab, setSecTab] = useState('password');
 
@@ -247,7 +247,7 @@ const SecurityTab = ({ lang = 'en', user, twoFactorEnabled, onTwoFactorChange })
     <div>
       <h3 className="settings-section-title">
         <Lock size={20} />
-        {getTranslation('securitySettings', lang)}
+        Security Settings
       </h3>
 
       {/* 2FA Status Panel */}
@@ -256,9 +256,9 @@ const SecurityTab = ({ lang = 'en', user, twoFactorEnabled, onTwoFactorChange })
           <div>
             <div className="settings-security-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Shield size={20} className={twoFactorEnabled ? 'text-success' : ''} />
-              {getTranslation('twoFactorAuth', lang)}
+              Two-Factor Authentication
             </div>
-            <div className="settings-security-subtitle">{getTranslation('twoFactorSubtitle', lang)}</div>
+            <div className="settings-security-subtitle">Add an extra verification step to protect your account.</div>
           </div>
           {twoFactorEnabled ? (
             <button
@@ -283,12 +283,12 @@ const SecurityTab = ({ lang = 'en', user, twoFactorEnabled, onTwoFactorChange })
           {twoFactorEnabled ? (
             <>
               <CheckCircle2 size={18} style={{ color: '#10b981' }} />
-              <span>{getTranslation('twoFactorEnabledNote', lang)}</span>
+              <span>Two-factor authentication is enabled.</span>
             </>
           ) : (
             <>
               <AlertCircle size={18} style={{ color: '#f59e0b' }} />
-              <span>{getTranslation('twoFactorDisabledNote', lang)}</span>
+              <span>Two-factor authentication is disabled.</span>
             </>
           )}
         </div>
@@ -307,17 +307,41 @@ const SecurityTab = ({ lang = 'en', user, twoFactorEnabled, onTwoFactorChange })
             </button>
 
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-              <QrCode size={22} style={{ color: 'var(--primary)' }} /> Set Up Two-Factor Authentication
+              <QrCode size={22} style={{ color: 'var(--primary-color, #38bdf8)' }} /> Set Up Two-Factor Authentication
             </h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-              1. Scan the secret key or enter it into your authenticator app (Google Authenticator / Authy).
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              1. Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):
             </p>
 
-            <div style={{ background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: '0.5rem', textAlign: 'center', marginBottom: '1.25rem' }}>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Your 2FA Secret Key:</div>
-              <code style={{ fontSize: '1.2rem', fontWeight: 'bold', letterSpacing: '2px', color: 'var(--primary)' }}>
-                {twoFactorSetupData.secret}
-              </code>
+            <div style={{ background: 'var(--bg-tertiary)', padding: '1.25rem', borderRadius: '0.75rem', textAlign: 'center', marginBottom: '1.25rem', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'inline-block', background: '#ffffff', padding: '0.75rem', borderRadius: '0.75rem', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)', marginBottom: '0.85rem' }}>
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                    twoFactorSetupData.otpauthUrl || `otpauth://totp/BankPro?secret=${twoFactorSetupData.secret}&issuer=BankPro`
+                  )}`}
+                  alt="2FA QR Code"
+                  style={{ width: '180px', height: '180px', display: 'block' }}
+                />
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                Or enter secret key manually:
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <code style={{ fontSize: '1rem', fontWeight: 'bold', letterSpacing: '1.5px', color: 'var(--primary-color, #38bdf8)' }}>
+                  {twoFactorSetupData.secret}
+                </code>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                  onClick={() => {
+                    navigator.clipboard.writeText(twoFactorSetupData.secret);
+                    showSuccess('Secret key copied to clipboard!');
+                  }}
+                >
+                  <Copy size={13} /> Copy Key
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleVerify2FaCode}>
@@ -348,271 +372,26 @@ const SecurityTab = ({ lang = 'en', user, twoFactorEnabled, onTwoFactorChange })
         </div>
       )}
 
-      {/* Embedded Security Section Tabs */}
-      <div className="settings-panel settings-top-gap-lg" style={{ padding: '1.5rem' }}>
-        <div className="tab-buttons" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => setSecTab('password')}
-            className={`btn ${secTab === 'password' ? 'btn-primary' : 'btn-secondary'}`}
+      {/* Link to Master Security Page */}
+      <div className="settings-security-panel settings-top-gap-lg" style={{ marginTop: '1.5rem', padding: '1.5rem', borderRadius: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+        <div className="settings-row-between settings-security-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div className="settings-security-title" style={{ fontSize: '1.1rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
+              <Key size={20} style={{ color: 'var(--primary-color, #38bdf8)' }} />
+              Passwords, PINs & Session Audit
+            </div>
+            <div className="settings-security-subtitle" style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+              Manage your Account Password, Card & Account PINs, Security Questions, and view complete Login & Session timestamps on the dedicated Security page.
+            </div>
+          </div>
+          <Link
+            to="/security"
+            className="btn btn-primary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', whiteSpace: 'nowrap' }}
           >
-            Change Password
-          </button>
-          <button
-            type="button"
-            onClick={() => setSecTab('account-pin')}
-            className={`btn ${secTab === 'account-pin' ? 'btn-primary' : 'btn-secondary'}`}
-          >
-            Account PIN
-          </button>
-          <button
-            type="button"
-            onClick={() => setSecTab('card-pin')}
-            className={`btn ${secTab === 'card-pin' ? 'btn-primary' : 'btn-secondary'}`}
-          >
-            Card PIN
-          </button>
+            Manage Credentials <ArrowRight size={16} />
+          </Link>
         </div>
-
-        {/* Change Password Form */}
-        {secTab === 'password' && (
-          <form onSubmit={handlePasswordSubmit}>
-            <h4 style={{ marginBottom: '1rem' }}>Change Account Password</h4>
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Current Password</label>
-              <div className="settings-input-icon-wrap">
-                <input
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  className="form-input settings-input-icon-pad"
-                  value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                  required
-                />
-                <button
-                  type="button"
-                  className="settings-input-icon-btn"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                >
-                  {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">New Password (min 8 chars)</label>
-              <div className="settings-input-icon-wrap">
-                <input
-                  type={showNewPassword ? 'text' : 'password'}
-                  className="form-input settings-input-icon-pad"
-                  value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                  required
-                />
-                <button
-                  type="button"
-                  className="settings-input-icon-btn"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                >
-                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-              <label className="form-label">Confirm New Password</label>
-              <div className="settings-input-icon-wrap">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  className="form-input settings-input-icon-pad"
-                  value={passwordForm.confirmPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                  required
-                />
-                <button
-                  type="button"
-                  className="settings-input-icon-btn"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" className="btn btn-primary" disabled={updatingPassword}>
-              {updatingPassword ? 'Updating...' : 'Update Password'}
-            </button>
-          </form>
-        )}
-
-        {/* Change Account PIN Form */}
-        {secTab === 'account-pin' && (
-          <form onSubmit={handleAccountPinSubmit}>
-            <h4 style={{ marginBottom: '0.5rem' }}>Change Account PIN</h4>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              Your Account PIN (4-6 digits) is used for validating internal transfers and payments.
-            </p>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Current Account PIN</label>
-              <div className="settings-input-icon-wrap">
-                <input
-                  type={showCurrentAccountPin ? 'text' : 'password'}
-                  className="form-input settings-input-icon-pad"
-                  value={accountPinForm.currentPin}
-                  onChange={(e) => setAccountPinForm({ ...accountPinForm, currentPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                  maxLength={6}
-                  required
-                />
-                <button
-                  type="button"
-                  className="settings-input-icon-btn"
-                  onClick={() => setShowCurrentAccountPin(!showCurrentAccountPin)}
-                >
-                  {showCurrentAccountPin ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">New Account PIN (4-6 digits)</label>
-              <div className="settings-input-icon-wrap">
-                <input
-                  type={showNewAccountPin ? 'text' : 'password'}
-                  className="form-input settings-input-icon-pad"
-                  value={accountPinForm.newPin}
-                  onChange={(e) => setAccountPinForm({ ...accountPinForm, newPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                  maxLength={6}
-                  required
-                />
-                <button
-                  type="button"
-                  className="settings-input-icon-btn"
-                  onClick={() => setShowNewAccountPin(!showNewAccountPin)}
-                >
-                  {showNewAccountPin ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-              <label className="form-label">Confirm New Account PIN</label>
-              <div className="settings-input-icon-wrap">
-                <input
-                  type={showConfirmAccountPin ? 'text' : 'password'}
-                  className="form-input settings-input-icon-pad"
-                  value={accountPinForm.confirmPin}
-                  onChange={(e) => setAccountPinForm({ ...accountPinForm, confirmPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                  maxLength={6}
-                  required
-                />
-                <button
-                  type="button"
-                  className="settings-input-icon-btn"
-                  onClick={() => setShowConfirmAccountPin(!showConfirmAccountPin)}
-                >
-                  {showConfirmAccountPin ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" className="btn btn-primary" disabled={updatingAccountPin}>
-              {updatingAccountPin ? 'Updating...' : 'Update Account PIN'}
-            </button>
-          </form>
-        )}
-
-        {/* Change Card PIN Form */}
-        {secTab === 'card-pin' && (
-          <form onSubmit={handleCardPinSubmit}>
-            <h4 style={{ marginBottom: '1rem' }}>Change Card PIN</h4>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Select Card</label>
-              {cards.length === 0 ? (
-                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>No active cards found.</div>
-              ) : (
-                <select
-                  className="form-input"
-                  value={selectedCardId}
-                  onChange={(e) => setSelectedCardId(e.target.value)}
-                >
-                  {cards.map((c) => (
-                    <option key={c._id || c.id} value={c._id || c.id}>
-                      {c.cardHolder || c.cardName || 'Card'} — **** {String(c.cardNumber || '').slice(-4)} ({c.cardType || 'Debit'})
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Current Card PIN</label>
-              <div className="settings-input-icon-wrap">
-                <input
-                  type={showCurrentCardPin ? 'text' : 'password'}
-                  className="form-input settings-input-icon-pad"
-                  value={cardPinForm.currentPin}
-                  onChange={(e) => setCardPinForm({ ...cardPinForm, currentPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                  maxLength={6}
-                  required
-                />
-                <button
-                  type="button"
-                  className="settings-input-icon-btn"
-                  onClick={() => setShowCurrentCardPin(!showCurrentCardPin)}
-                >
-                  {showCurrentCardPin ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label className="form-label">New Card PIN (4-6 digits)</label>
-              <div className="settings-input-icon-wrap">
-                <input
-                  type={showNewCardPin ? 'text' : 'password'}
-                  className="form-input settings-input-icon-pad"
-                  value={cardPinForm.newPin}
-                  onChange={(e) => setCardPinForm({ ...cardPinForm, newPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                  maxLength={6}
-                  required
-                />
-                <button
-                  type="button"
-                  className="settings-input-icon-btn"
-                  onClick={() => setShowNewCardPin(!showNewCardPin)}
-                >
-                  {showNewCardPin ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-              <label className="form-label">Confirm New Card PIN</label>
-              <div className="settings-input-icon-wrap">
-                <input
-                  type={showConfirmCardPin ? 'text' : 'password'}
-                  className="form-input settings-input-icon-pad"
-                  value={cardPinForm.confirmPin}
-                  onChange={(e) => setCardPinForm({ ...cardPinForm, confirmPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                  maxLength={6}
-                  required
-                />
-                <button
-                  type="button"
-                  className="settings-input-icon-btn"
-                  onClick={() => setShowConfirmCardPin(!showConfirmCardPin)}
-                >
-                  {showConfirmCardPin ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" className="btn btn-primary" disabled={updatingCardPin || !selectedCardId}>
-              {updatingCardPin ? 'Updating...' : 'Update Card PIN'}
-            </button>
-          </form>
-        )}
       </div>
     </div>
   );

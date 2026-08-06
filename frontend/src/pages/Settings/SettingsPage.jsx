@@ -9,7 +9,6 @@ import ProfileTab from './components/ProfileTab';
 import SecurityTab from './components/SecurityTab';
 import SessionsTab from './components/SessionsTab';
 import SettingsTabs from './components/SettingsTabs';
-import { getTranslation } from '../../utils/i18n';
 import '../../styles/pages/Settings.css';
 import {
   getInitialBankData,
@@ -18,6 +17,73 @@ import {
 } from './utils';
 
 const VALID_TABS = ['profile', 'bank', 'security', 'preferences', 'accounts', 'sessions'];
+const KYC_RULES = {
+  aadhaar: {
+    regex: /^[2-9]{1}[0-9]{11}$/,
+    maxLength: 12,
+    inputMode: 'numeric',
+    pattern: '[2-9][0-9]{11}',
+    placeholder: 'Enter 12 digit Aadhaar number',
+    helpText: '12 digits only. No spaces or hyphens. Cannot begin with 0 or 1.',
+    formatError: 'Aadhaar must be 12 digits and cannot begin with 0 or 1'
+  },
+  pan: {
+    regex: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
+    maxLength: 10,
+    inputMode: 'text',
+    pattern: '[A-Z]{5}[0-9]{4}[A-Z]{1}',
+    placeholder: 'ABCDE1234F',
+    helpText: '5 uppercase letters, 4 digits, then 1 uppercase letter.',
+    formatError: 'PAN must match ABCDE1234F format'
+  },
+  voter: {
+    regex: /^[A-Z]{3}[0-9]{7}$/,
+    maxLength: 10,
+    inputMode: 'text',
+    pattern: '[A-Z]{3}[0-9]{7}',
+    placeholder: 'ABC1234567',
+    helpText: '3 uppercase letters followed by 7 digits.',
+    formatError: 'Voter ID must match ABC1234567 format'
+  }
+};
+
+const sanitizeKycNumber = (idType, value) => {
+  const rule = KYC_RULES[idType] || KYC_RULES.aadhaar;
+  const raw = String(value || '');
+  const normalized = idType === 'aadhaar' ? raw : raw.toUpperCase();
+  let nextValue = '';
+
+  for (const char of normalized) {
+    const position = nextValue.length;
+    if (position >= rule.maxLength) break;
+
+    const isDigit = /^[0-9]$/.test(char);
+    const isLetter = /^[A-Z]$/.test(char);
+
+    if (idType === 'aadhaar') {
+      if (position === 0 && /^[2-9]$/.test(char)) nextValue += char;
+      else if (position > 0 && isDigit) nextValue += char;
+    } else if (idType === 'pan') {
+      if ((position < 5 || position === 9) && isLetter) nextValue += char;
+      else if (position >= 5 && position <= 8 && isDigit) nextValue += char;
+    } else if (idType === 'voter') {
+      if (position < 3 && isLetter) nextValue += char;
+      else if (position >= 3 && isDigit) nextValue += char;
+    }
+  }
+
+  return nextValue;
+};
+
+const canInsertKycText = (idType, currentValue, insertedText, selectionStart, selectionEnd) => {
+  if (!insertedText) return true;
+  const value = String(currentValue || '');
+  const start = Number.isInteger(selectionStart) ? selectionStart : value.length;
+  const end = Number.isInteger(selectionEnd) ? selectionEnd : start;
+  const normalizedInsert = idType === 'aadhaar' ? insertedText : insertedText.toUpperCase();
+  const nextValue = `${value.slice(0, start)}${normalizedInsert}${value.slice(end)}`;
+  return sanitizeKycNumber(idType, nextValue) === nextValue;
+};
 
 const Settings = ({ user, onUserUpdate }) => {
   const { showSuccess, showError } = useNotification();
@@ -34,7 +100,6 @@ const Settings = ({ user, onUserUpdate }) => {
   const [linkedAccounts, setLinkedAccounts] = useState([]);
   const [sessions, setSessions] = useState(null);
   const [profileData, setProfileData] = useState(getInitialProfileData(user));
-  const [profilePhotoFile, setProfilePhotoFile] = useState(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState('');
   const [profilePhotoUploading, setProfilePhotoUploading] = useState(false);
   const [profilePhotoError, setProfilePhotoError] = useState(false);
@@ -74,7 +139,6 @@ const Settings = ({ user, onUserUpdate }) => {
   useEffect(() => {
     if (!isDirty) {
       setProfileData(getInitialProfileData(user));
-      setProfilePhotoFile(null);
       setProfilePhotoPreview('');
       setProfilePhotoError(false);
       setKycStatus(user?.kyc || { status: 'unverified' });
@@ -82,12 +146,6 @@ const Settings = ({ user, onUserUpdate }) => {
       setTwoFactorEnabled(user?.security?.twoFactorEnabled || false);
     }
   }, [user?._id]);
-
-  useEffect(() => {
-    if (user?.preferences?.language && user.preferences.language !== preferencesData.language && !isDirty) {
-      setPreferencesData((prev) => ({ ...prev, language: user.preferences.language }));
-    }
-  }, [user?.preferences?.language]);
 
   // Bootstrap load settings
   useEffect(() => {
@@ -129,7 +187,6 @@ const Settings = ({ user, onUserUpdate }) => {
             setPreferencesData((prev) => ({
               ...prev,
               currency: settings.preferences?.currency || 'INR',
-              language: settings.preferences?.language || 'en',
               theme: settings.preferences?.theme || 'light',
               notifications: {
                 email: settings.preferences?.notifications?.email !== false,
@@ -185,7 +242,7 @@ const Settings = ({ user, onUserUpdate }) => {
       return;
     }
 
-    const phoneRegex = /^\+?[\d\s\-]{7,15}$/;
+    const phoneRegex = /^\+?[\d\s-]{7,15}$/;
     if (profileData.phone && !phoneRegex.test(profileData.phone.trim())) {
       showError('Please enter a valid phone number (e.g., +91 9876543210)');
       setLoading((prev) => ({ ...prev, profile: false }));
@@ -353,19 +410,6 @@ const Settings = ({ user, onUserUpdate }) => {
       document.documentElement.setAttribute('data-theme', value === 'dark' ? 'dark' : 'light');
     }
 
-    if (name === 'language') {
-      document.documentElement.lang = value || 'en';
-      if (onUserUpdate) {
-        onUserUpdate((prevUser) => ({
-          ...prevUser,
-          preferences: {
-            ...(prevUser?.preferences || {}),
-            language: value
-          }
-        }));
-      }
-    }
-
     setPreferencesData((prev) => ({
       ...prev,
       [name]: value
@@ -377,7 +421,6 @@ const Settings = ({ user, onUserUpdate }) => {
     setPreferencesData(initial);
     setIsDirty(false);
     document.documentElement.setAttribute('data-theme', initial.theme === 'dark' ? 'dark' : 'light');
-    document.documentElement.lang = initial.language || 'en';
     showSuccess('Restored saved preferences');
   };
 
@@ -405,7 +448,6 @@ const Settings = ({ user, onUserUpdate }) => {
           ...prev,
           photoUrl: result.data?.profile?.photoUrl || prev.photoUrl
         }));
-        setProfilePhotoFile(null);
         setProfilePhotoPreview('');
         setProfilePhotoError(false);
         setProfilePhotoVersion(Date.now());
@@ -505,8 +547,37 @@ const Settings = ({ user, onUserUpdate }) => {
     }
   };
 
-  const handleKycChange = (field, value) => {
-    setKycForm((prev) => ({ ...prev, [field]: value }));
+  const handleKycTypeChange = (idType) => {
+    setKycForm((prev) => ({
+      ...prev,
+      idType,
+      idNumber: sanitizeKycNumber(idType, prev.idNumber)
+    }));
+  };
+
+  const handleKycNumberChange = (value) => {
+    setKycForm((prev) => ({
+      ...prev,
+      idNumber: sanitizeKycNumber(prev.idType, value)
+    }));
+  };
+
+  const handleKycNumberBeforeInput = (event) => {
+    if (!canInsertKycText(
+      kycForm.idType,
+      event.currentTarget.value,
+      event.data,
+      event.currentTarget.selectionStart,
+      event.currentTarget.selectionEnd
+    )) {
+      event.preventDefault();
+    }
+  };
+
+  const handleKycNumberPaste = (event) => {
+    event.preventDefault();
+    const pasted = event.clipboardData?.getData('text') || '';
+    handleKycNumberChange(`${kycForm.idNumber}${pasted}`);
   };
 
   const handleKycDocuments = (files) => {
@@ -520,6 +591,11 @@ const Settings = ({ user, onUserUpdate }) => {
     if (kycSubmitting) return;
     if (!kycForm.documents.length) {
       showError('Please upload at least one document (Image or PDF)');
+      return;
+    }
+    const rule = KYC_RULES[kycForm.idType] || KYC_RULES.aadhaar;
+    if (!rule.regex.test(kycForm.idNumber)) {
+      showError(rule.formatError);
       return;
     }
     setKycSubmitting(true);
@@ -600,21 +676,20 @@ const Settings = ({ user, onUserUpdate }) => {
     return `${base}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}${suffix}`;
   };
 
-  const currentLang = preferencesData.language || user?.preferences?.language || 'en';
+  const kycInput = KYC_RULES[kycForm.idType] || KYC_RULES.aadhaar;
 
   return (
     <div className="container settings-page">
       <div className="settings-page-header">
-        <h1 className="settings-page-title">{getTranslation('accountSettings', currentLang)}</h1>
-        <p className="settings-page-subtitle">{getTranslation('manageAccountPreferences', currentLang)}</p>
+        <h1 className="settings-page-title">Account Settings</h1>
+        <p className="settings-page-subtitle">Manage your profile, bank details, security, preferences, accounts, and sessions.</p>
       </div>
 
       <div className="card">
-        <SettingsTabs activeTab={activeTab} setActiveTab={handleTabSwitch} currentLang={currentLang} />
+        <SettingsTabs activeTab={activeTab} setActiveTab={handleTabSwitch} />
 
         {activeTab === 'profile' && (
           <ProfileTab
-            lang={currentLang}
             user={user}
             profileData={profileData}
             setProfileData={(data) => {
@@ -627,14 +702,17 @@ const Settings = ({ user, onUserUpdate }) => {
             profilePhotoVersion={profilePhotoVersion}
             onProfilePhotoError={() => setProfilePhotoError(true)}
             onProfilePhotoSelect={handleProfilePhotoSelect}
-            onProfilePhotoUpload={() => {}}
             getAbsolutePhotoUrl={getAbsolutePhotoUrl}
             kycStatus={kycStatus}
             kycForm={kycForm}
-            onKycChange={handleKycChange}
+            onKycTypeChange={handleKycTypeChange}
+            onKycNumberChange={handleKycNumberChange}
+            onKycNumberBeforeInput={handleKycNumberBeforeInput}
+            onKycNumberPaste={handleKycNumberPaste}
             onKycDocuments={handleKycDocuments}
             onSubmitKyc={submitKyc}
             kycSubmitting={kycSubmitting}
+            kycInput={kycInput}
             onDetectLocation={detectLocation}
             locatingAddress={locatingAddress}
             handleProfileChange={handleProfileChange}
@@ -644,7 +722,6 @@ const Settings = ({ user, onUserUpdate }) => {
         )}
         {activeTab === 'bank' && (
           <BankTab
-            lang={currentLang}
             user={user}
             bankData={bankData}
             handleFormKeyDown={handleFormKeyDown}
@@ -655,7 +732,6 @@ const Settings = ({ user, onUserUpdate }) => {
         )}
         {activeTab === 'preferences' && (
           <PreferencesTab
-            lang={currentLang}
             preferencesData={preferencesData}
             handlePreferencesChange={handlePreferencesChange}
             handlePreferencesUpdate={handlePreferencesUpdate}
@@ -665,7 +741,6 @@ const Settings = ({ user, onUserUpdate }) => {
         )}
         {activeTab === 'security' && (
           <SecurityTab
-            lang={currentLang}
             user={user}
             twoFactorEnabled={twoFactorEnabled}
             onTwoFactorChange={(enabled) => setTwoFactorEnabled(enabled)}
@@ -673,7 +748,6 @@ const Settings = ({ user, onUserUpdate }) => {
         )}
         {activeTab === 'accounts' && (
           <AccountsTab
-            lang={currentLang}
             linkedAccounts={linkedAccounts}
             loading={loading.accounts || loading.bootstrap}
             onRefresh={refreshLinkedAccounts}
@@ -682,7 +756,6 @@ const Settings = ({ user, onUserUpdate }) => {
         )}
         {activeTab === 'sessions' && (
           <SessionsTab
-            lang={currentLang}
             sessions={sessions}
             loading={loading.sessions || loading.bootstrap}
             onRefresh={refreshSessions}
