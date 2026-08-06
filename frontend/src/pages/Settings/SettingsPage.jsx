@@ -49,9 +49,8 @@ const Settings = ({ user, onUserUpdate }) => {
     setKycStatus(user?.kyc || { status: 'unverified' });
     setKycForm({ idType: 'aadhaar', idNumber: '', documents: [] });
     setBankData(getInitialBankData(user));
-    setPreferencesData(getInitialPreferencesData(user));
     setTwoFactorEnabled(user.security?.twoFactorEnabled || false);
-  }, [user]);
+  }, [user?._id]);
 
   useEffect(() => {
     const loadSettingsData = async () => {
