@@ -10,6 +10,7 @@ import Register from './components/Auth/Register';
 import ForgotPassword from './components/Auth/ForgotPassword';
 import ResetPassword from './components/Auth/ResetPassword';
 import PasswordResetSuccess from './components/Auth/PasswordResetSuccess';
+import SessionManager from './components/Auth/SessionManager';
 
 import Dashboard from './components/Dashboard/Dashboard';
 import {
@@ -253,6 +254,7 @@ function App() {
   return (
     <Router>
       <NotificationProvider>
+        <SessionManager user={user} onLogout={handleLogout} />
         <Routes>
           {/* Public / Auth routes */}
           <Route path="/login" element={<AuthWrapper><Login onLogin={handleLogin} /></AuthWrapper>} />
