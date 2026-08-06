@@ -288,6 +288,37 @@ const updateProfilePhoto = async (req, res) => {
     res.status(200).json({ success: true, data: user });
 };
 
+const disableUserTwoFactor = async (req, res) => {
+    if (!isAdmin(req)) {
+        const error = new Error('Admin authorization required');
+        error.statusCode = 403;
+        throw error;
+    }
+    const user = await User.findById(req.params.id);
+    if (!user) {
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    user.security = {
+        ...(user.security || {}),
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        twoFactorOtpHash: null,
+        twoFactorOtpExpires: null
+    };
+    await user.save({ validateBeforeSave: false });
+
+    await logAdminAction(req, 'DISABLE_2FA', 'User', user._id, { email: user.email });
+
+    res.status(200).json({
+        success: true,
+        message: `Two-factor authentication disabled for ${user.name}`,
+        data: { _id: user._id, twoFactorEnabled: false }
+    });
+};
+
 module.exports = {
     getUsers: asyncHandler(getUsers),
     getUser: asyncHandler(getUser),
@@ -302,5 +333,6 @@ module.exports = {
     updateClientData: asyncHandler(updateClientData),
     verifyPin: asyncHandler(verifyPin),
     updatePin: asyncHandler(updatePin),
-    updateProfilePhoto: asyncHandler(updateProfilePhoto)
+    updateProfilePhoto: asyncHandler(updateProfilePhoto),
+    disableUserTwoFactor: asyncHandler(disableUserTwoFactor)
 };

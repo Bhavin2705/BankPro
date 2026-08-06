@@ -283,6 +283,7 @@ export const api = {
         getBankMetrics: () => apiRequest('/users/bank-metrics'),
         getBanks: () => apiRequest('/banks'),
         updateStatus: (id, data) => apiRequest(`/users/${id}/status`, { method: 'PUT', body: JSON.stringify(data) }),
+        disableTwoFactor: (id) => apiRequest(`/users/${id}/disable-2fa`, { method: 'PUT' }),
         checkEmail: (email) => apiRequest(`/users/check-email?email=${encodeURIComponent(email)}`),
         checkPhone: (phone) => apiRequest(`/users/check-phone?phone=${encodeURIComponent(phone)}`),
         verifyPin: (pin) => apiRequest('/users/verify-pin', { method: 'POST', body: JSON.stringify({ pin }) }),

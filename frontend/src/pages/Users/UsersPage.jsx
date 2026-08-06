@@ -101,6 +101,36 @@ const Users = ({ user }) => {
     setModal(getBlockModalConfig(userId, currentStatus, userName));
   };
 
+  const handleDisableTwoFactor = async (targetUser) => {
+    const targetUserId = getUserId(targetUser);
+    if (!targetUserId) return;
+
+    if (!window.confirm(`Disable 2FA for ${targetUser.name}? They will be able to log in without email OTP.`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.users.disableTwoFactor(targetUserId);
+      if (res?.success) {
+        toast.success(res.message || `2FA disabled for ${targetUser.name}`);
+        await loadUsers();
+        if (selectedUser && getUserId(selectedUser) === targetUserId) {
+          setSelectedUser((prev) => ({
+            ...prev,
+            security: { ...(prev?.security || {}), twoFactorEnabled: false }
+          }));
+        }
+      } else {
+        toast.error(res?.error || 'Failed to disable 2FA');
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Failed to disable 2FA');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleModalConfirm = async () => {
     setLoading(true);
     if (modal.type === 'block') {
@@ -285,13 +315,26 @@ const Users = ({ user }) => {
 
                     <div className="users-action-cell">
                       {!isAdmin && !isSelf ? (
-                        <button
-                          disabled={loading}
-                          className={`users-action-btn ${status === 'active' ? 'users-action-block' : 'users-action-unblock'}`}
-                          onClick={() => handleBlock(listedUserId, listedUser.status, listedUser.name)}
-                        >
-                          {status === 'active' ? 'Block' : 'Unblock'}
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                          <button
+                            disabled={loading}
+                            className={`users-action-btn ${status === 'active' ? 'users-action-block' : 'users-action-unblock'}`}
+                            onClick={() => handleBlock(listedUserId, listedUser.status, listedUser.name)}
+                          >
+                            {status === 'active' ? 'Block' : 'Unblock'}
+                          </button>
+                          {listedUser.security?.twoFactorEnabled && (
+                            <button
+                              disabled={loading}
+                              className="users-action-btn"
+                              style={{ backgroundColor: '#e11d48', color: '#ffffff' }}
+                              onClick={() => handleDisableTwoFactor(listedUser)}
+                              title="Disable 2FA for this user"
+                            >
+                              Disable 2FA
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <span className="users-action-placeholder">-</span>
                       )}
@@ -340,6 +383,29 @@ const Users = ({ user }) => {
                 <div className="users-profile-item">
                   <div className="users-profile-label">Status</div>
                   <div className="users-profile-value">{selectedUser.status || 'active'}</div>
+                </div>
+                <div className="users-profile-item">
+                  <div className="users-profile-label">Two-Factor Auth (2FA)</div>
+                  <div className="users-profile-value" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>{selectedUser.security?.twoFactorEnabled ? 'Enabled' : 'Disabled'}</span>
+                    {selectedUser.security?.twoFactorEnabled && (
+                      <button
+                        disabled={loading}
+                        onClick={() => handleDisableTwoFactor(selectedUser)}
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '0.2rem 0.5rem',
+                          borderRadius: '0.25rem',
+                          backgroundColor: '#e11d48',
+                          color: '#ffffff',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Disable 2FA
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

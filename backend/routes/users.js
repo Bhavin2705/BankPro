@@ -1,6 +1,6 @@
 const express = require('express');
 const User = require('../models/User');
-const { getUsers, getUser, updateUser, getUserStats, getAdminActions, getBanks, getBankMetrics, getTransferRecipients, getClientData, updateClientData, verifyPin, updatePin, updateProfilePhoto } = require('../controllers/user.controller');
+const { getUsers, getUser, updateUser, getUserStats, getAdminActions, getBanks, getBankMetrics, getTransferRecipients, getClientData, updateClientData, verifyPin, updatePin, updateProfilePhoto, disableUserTwoFactor } = require('../controllers/user.controller');
 const { protect, authorize } = require('../middleware/auth');
 const { validateObjectId, validatePagination, validateEmailAvailabilityQuery, validatePhoneAvailabilityQuery, validatePinVerification, validatePinUpdate, validateClientDataUpdate, validateUserStatusUpdate, validateUserUpdatePayload } = require('../middleware/validation');
 const { apiLimiter, lookupLimiter, pinLimiter, uploadLimiter } = require('../middleware/rateLimit');
@@ -48,6 +48,7 @@ router.get('/transfer-recipients', getTransferRecipients);
 
 router.get('/', authorize('admin'), validatePagination, getUsers);
 router.put('/:id/status', authorize('admin'), validateObjectId, validateUserStatusUpdate, sanitizeStatusPayload, updateUser);
+router.put('/:id/disable-2fa', authorize('admin'), validateObjectId, disableUserTwoFactor);
 router.get('/:id', validateObjectId, getUser);
 router.put('/:id', validateObjectId, validateUserUpdatePayload, updateUser);
 
