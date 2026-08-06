@@ -8,6 +8,7 @@ import ProfileTab from './components/ProfileTab';
 import SecurityTab from './components/SecurityTab';
 import SessionsTab from './components/SessionsTab';
 import SettingsTabs from './components/SettingsTabs';
+import { getTranslation } from '../../utils/i18n';
 import '../../styles/pages/Settings.css';
 import {
   getInitialBankData,
@@ -554,11 +555,13 @@ const Settings = ({ user, onUserUpdate }) => {
     showSuccess('Restored saved preferences');
   };
 
+  const currentLang = preferencesData.language || user?.preferences?.language || 'en';
+
   return (
     <div className="container settings-page">
       <div className="settings-page-header">
-        <h1 className="settings-page-title">Account Settings</h1>
-        <p className="settings-page-subtitle">Manage your account preferences and security</p>
+        <h1 className="settings-page-title">{getTranslation('accountSettings', currentLang)}</h1>
+        <p className="settings-page-subtitle">{getTranslation('manageAccountPreferences', currentLang)}</p>
       </div>
 
       <div className="card">
