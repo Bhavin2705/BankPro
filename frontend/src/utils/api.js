@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://bank-management-system-1-mf4e.onrender.com/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://bankpro-backend.onrender.com/api';
 const ACCESS_TOKEN_KEY = 'bank_auth_access_token';
 let inMemoryAccessToken = null;
 

@@ -8,7 +8,7 @@ const isAllowed = origin => {
     if (!origin) return true;
     try {
         const host = new URL(origin).hostname;
-        if (host === 'localhost' || host === '127.0.0.1' || (allowVercel && host.endsWith('.vercel.app'))) return true;
+        if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.vercel.app')) return true;
     } catch (_) { return false; }
     return allowedOrigins.has(origin);
 };
