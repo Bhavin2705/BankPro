@@ -527,20 +527,31 @@ const Settings = ({ user, onUserUpdate }) => {
   const handlePreferencesChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (type === 'checkbox') {
-      setPreferencesData({
-        ...preferencesData,
+      setPreferencesData((prev) => ({
+        ...prev,
         notifications: {
-          ...preferencesData.notifications,
+          ...prev.notifications,
           [name]: checked
         }
-      });
+      }));
       return;
     }
 
-    setPreferencesData({
-      ...preferencesData,
+    if (name === 'theme') {
+      document.documentElement.setAttribute('data-theme', value === 'dark' ? 'dark' : 'light');
+    }
+
+    setPreferencesData((prev) => ({
+      ...prev,
       [name]: value
-    });
+    }));
+  };
+
+  const handleResetPreferences = () => {
+    const initial = getInitialPreferencesData(user);
+    setPreferencesData(initial);
+    document.documentElement.setAttribute('data-theme', initial.theme === 'dark' ? 'dark' : 'light');
+    showSuccess('Restored saved preferences');
   };
 
   return (
@@ -606,6 +617,7 @@ const Settings = ({ user, onUserUpdate }) => {
             preferencesData={preferencesData}
             handlePreferencesChange={handlePreferencesChange}
             handlePreferencesUpdate={handlePreferencesUpdate}
+            handleResetPreferences={handleResetPreferences}
             loading={loading.preferences}
           />
         )}
