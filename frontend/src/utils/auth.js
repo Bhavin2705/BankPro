@@ -40,7 +40,7 @@ const handleAccountSelectionError = (error) => {
 const readStoredUser = () => {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.sessionStorage.getItem(AUTH_KEY);
+    const raw = window.localStorage.getItem(AUTH_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -52,10 +52,10 @@ const writeStoredUser = (user) => {
   if (typeof window === 'undefined') return null;
   try {
     if (!user) {
-      window.sessionStorage.removeItem(AUTH_KEY);
+      window.localStorage.removeItem(AUTH_KEY);
       return null;
     }
-    window.sessionStorage.setItem(AUTH_KEY, JSON.stringify(user));
+    window.localStorage.setItem(AUTH_KEY, JSON.stringify(user));
     return user;
   } catch {
     return null;
@@ -65,7 +65,7 @@ const writeStoredUser = (user) => {
 const clearStoredUser = () => {
   if (typeof window === 'undefined') return;
   try {
-    window.sessionStorage.removeItem(AUTH_KEY);
+    window.localStorage.removeItem(AUTH_KEY);
   } catch {
     // no-op
   }

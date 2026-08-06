@@ -5,7 +5,7 @@ let inMemoryAccessToken = null;
 const readSessionValue = (key) => {
     if (typeof window === 'undefined') return null;
     try {
-        return window.sessionStorage.getItem(key);
+        return window.localStorage.getItem(key);
     } catch {
         return null;
     }
@@ -15,10 +15,10 @@ const writeSessionValue = (key, value) => {
     if (typeof window === 'undefined') return;
     try {
         if (!value) {
-            window.sessionStorage.removeItem(key);
+            window.localStorage.removeItem(key);
             return;
         }
-        window.sessionStorage.setItem(key, value);
+        window.localStorage.setItem(key, value);
     } catch {
         // no-op
     }

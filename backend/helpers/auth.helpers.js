@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-const JWT_EXPIRE_DAYS = parseInt(process.env.JWT_EXPIRE_DAYS, 10) || 7;
-const JWT_REFRESH_EXPIRE_DAYS = parseInt(process.env.JWT_REFRESH_EXPIRE_DAYS, 10) || 30;
+const JWT_EXPIRE_DAYS = parseInt(process.env.JWT_EXPIRE_DAYS, 10) || 30;
+const JWT_REFRESH_EXPIRE_DAYS = parseInt(process.env.JWT_REFRESH_EXPIRE_DAYS, 10) || 365;
 
 const getJwtSecret = () => process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET missing'); })();
 const getJwtRefreshSecret = () => process.env.JWT_REFRESH_SECRET || (() => { throw new Error('JWT_REFRESH_SECRET missing'); })();
