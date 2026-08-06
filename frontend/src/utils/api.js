@@ -70,7 +70,7 @@ const requestNewAccessToken = async () => {
         refreshData = {};
     }
 
-    const nextAccessToken = refreshData?.data?.token || null;
+    const nextAccessToken = refreshData?.token || refreshData?.data?.token || null;
     if (nextAccessToken) {
         setAuthToken(nextAccessToken);
     }
@@ -148,8 +148,9 @@ const apiRequest = async (endpoint, options = {}) => {
         clearAuthToken();
     }
 
-    if (result && result.data && result.data.token) {
-        setAuthToken(result.data.token);
+    const returnedToken = result?.token || result?.data?.token;
+    if (returnedToken) {
+        setAuthToken(returnedToken);
     }
 
     return result;
@@ -206,9 +207,6 @@ export const api = {
         getAll: () => apiRequest('/banks'),
         addBank: (data) => apiRequest('/banks', { method: 'POST', body: JSON.stringify(data) }),
         updateBank: (id, data) => apiRequest(`/banks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-        add: (data) => apiRequest('/banks', { method: 'POST', body: JSON.stringify(data) }), // Legacy alias
-        update: (id, data) => apiRequest(`/banks/${id}`, { method: 'PUT', body: JSON.stringify(data) }), // Legacy alias
-        delete: (id) => apiRequest(`/banks/${id}`, { method: 'DELETE' }), // Legacy alias
         deleteBank: (id) => apiRequest(`/banks/${id}`, { method: 'DELETE' })
     },
 

@@ -1,20 +1,3 @@
-export const initialBillFormData = {
-  name: '',
-  amount: '',
-  dueDate: '',
-  category: 'utilities',
-};
-
-export const initialRecurringFormData = {
-  recipientName: '',
-  recipientAccount: '',
-  recipientPhone: '',
-  amount: '',
-  frequency: 'monthly',
-  description: '',
-  startDate: '',
-};
-
 export const billCategories = [
   'utilities',
   'internet',

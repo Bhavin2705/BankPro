@@ -1,8 +1,9 @@
-﻿import { Eye, EyeOff, Key, Lock, Shield } from 'lucide-react';
+import { Eye, EyeOff, Key, Lock, Shield } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNotification } from '../../components/providers/NotificationProvider';
 import api from '../../utils/api';
 import clientData from '../../utils/clientData';
+import '../../styles/pages/Security.css';
 import {
   getRecentLoginHistory,
   INITIAL_ACCOUNT_PIN_FORM,
@@ -79,7 +80,7 @@ const Security = ({ user }) => {
         }
       })
       .catch((loadCardsError) => {
-        console.error('Failed to load cards:', loadCardsError);
+        
         setCards([]);
       });
   }, [selectedCardId]);
@@ -107,7 +108,7 @@ const Security = ({ user }) => {
         showError(res.error || 'Failed to update PIN');
       }
     } catch (updatePinError) {
-      console.error('Update PIN error:', updatePinError);
+      
       showError(updatePinError.message || 'Failed to update PIN');
     } finally {
       setUpdatingCardPin(false);
@@ -139,7 +140,7 @@ const Security = ({ user }) => {
         showError(res.error || 'Failed to update account PIN');
       }
     } catch (updateAccountPinError) {
-      console.error('Update account PIN error:', updateAccountPinError);
+      
       showError(updateAccountPinError.message || 'Failed to update account PIN');
     } finally {
       setUpdatingAccountPin(false);
@@ -322,7 +323,7 @@ const Security = ({ user }) => {
             <div className="form-group">
               <label className="form-label">Current PIN</label>
               <div className="security-input-wrap">
-                <input type={showCurrentPin ? 'text' : 'password'} className="form-input" value={pinForm.currentPin} onChange={(event) => setPinForm({ ...pinForm, currentPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 4) })} maxLength="4" required />
+                <input type={showCurrentPin ? 'text' : 'password'} className="form-input" value={pinForm.currentPin} onChange={(event) => setPinForm({ ...pinForm, currentPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
                 <button type="button" onClick={() => setShowCurrentPin(!showCurrentPin)} className="security-input-toggle" title={showCurrentPin ? 'Hide PIN' : 'Show PIN'}>
                   {showCurrentPin ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -330,9 +331,9 @@ const Security = ({ user }) => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">New PIN (4 digits)</label>
+              <label className="form-label">New PIN (4-6 digits)</label>
               <div className="security-input-wrap">
-                <input type={showNewPin ? 'text' : 'password'} className="form-input" value={pinForm.newPin} onChange={(event) => setPinForm({ ...pinForm, newPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 4) })} maxLength="4" required />
+                <input type={showNewPin ? 'text' : 'password'} className="form-input" value={pinForm.newPin} onChange={(event) => setPinForm({ ...pinForm, newPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
                 <button type="button" onClick={() => setShowNewPin(!showNewPin)} className="security-input-toggle" title={showNewPin ? 'Hide PIN' : 'Show PIN'}>
                   {showNewPin ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -342,7 +343,7 @@ const Security = ({ user }) => {
             <div className="form-group">
               <label className="form-label">Confirm New PIN</label>
               <div className="security-input-wrap">
-                <input type={showConfirmPin ? 'text' : 'password'} className="form-input" value={pinForm.confirmPin} onChange={(event) => setPinForm({ ...pinForm, confirmPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 4) })} maxLength="4" required />
+                <input type={showConfirmPin ? 'text' : 'password'} className="form-input" value={pinForm.confirmPin} onChange={(event) => setPinForm({ ...pinForm, confirmPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
                 <button type="button" onClick={() => setShowConfirmPin(!showConfirmPin)} className="security-input-toggle" title={showConfirmPin ? 'Hide PIN' : 'Show PIN'}>
                   {showConfirmPin ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -359,13 +360,13 @@ const Security = ({ user }) => {
           <form onSubmit={handleAccountPinChange}>
             <h3 className="security-section-title">Change Account PIN</h3>
             <p className="security-section-subtitle">
-              This is the 4 digit PIN set during registration.
+              This is the 4-6 digit PIN set during registration.
             </p>
 
             <div className="form-group">
               <label className="form-label">Current Account PIN</label>
               <div className="security-input-wrap">
-                <input type={showCurrentAccountPin ? 'text' : 'password'} className="form-input" value={accountPinForm.currentPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, currentPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 4) })} maxLength="4" required />
+                <input type={showCurrentAccountPin ? 'text' : 'password'} className="form-input" value={accountPinForm.currentPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, currentPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
                 <button type="button" onClick={() => setShowCurrentAccountPin(!showCurrentAccountPin)} className="security-input-toggle" title={showCurrentAccountPin ? 'Hide PIN' : 'Show PIN'}>
                   {showCurrentAccountPin ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -375,7 +376,7 @@ const Security = ({ user }) => {
             <div className="form-group">
               <label className="form-label">New Account PIN</label>
               <div className="security-input-wrap">
-                <input type={showNewAccountPin ? 'text' : 'password'} className="form-input" value={accountPinForm.newPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, newPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 4) })} maxLength="4" required />
+                <input type={showNewAccountPin ? 'text' : 'password'} className="form-input" value={accountPinForm.newPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, newPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
                 <button type="button" onClick={() => setShowNewAccountPin(!showNewAccountPin)} className="security-input-toggle" title={showNewAccountPin ? 'Hide PIN' : 'Show PIN'}>
                   {showNewAccountPin ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -385,7 +386,7 @@ const Security = ({ user }) => {
             <div className="form-group">
               <label className="form-label">Confirm New Account PIN</label>
               <div className="security-input-wrap">
-                <input type={showConfirmAccountPin ? 'text' : 'password'} className="form-input" value={accountPinForm.confirmPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, confirmPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 4) })} maxLength="4" required />
+                <input type={showConfirmAccountPin ? 'text' : 'password'} className="form-input" value={accountPinForm.confirmPin} onChange={(event) => setAccountPinForm({ ...accountPinForm, confirmPin: event.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} maxLength="6" required />
                 <button type="button" onClick={() => setShowConfirmAccountPin(!showConfirmAccountPin)} className="security-input-toggle" title={showConfirmAccountPin ? 'Hide PIN' : 'Show PIN'}>
                   {showConfirmAccountPin ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>

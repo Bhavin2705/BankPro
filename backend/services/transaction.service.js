@@ -1,253 +1,109 @@
-const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 const Card = require('../models/Card');
 const User = require('../models/User');
 const notificationService = require('./notification.service');
-const { roundTwo } = require('../helpers/transaction.helpers');
+const { roundTwo, withTransactionOrFallback } = require('../helpers/transaction.helpers');
 const { createServiceError } = require('./service-error');
-const useDbTransactions = String(process.env.ENABLE_DB_TRANSACTIONS || 'true').toLowerCase() === 'true';
-const isTransactionUnsupportedError = (error) => {
-    const message = String(error?.message || '').toLowerCase();
-    return message.includes('transaction numbers are only allowed on a replica set member or mongos')
-        || message.includes('replicaset')
-        || message.includes('not supported')
-        || message.includes('standalone');
-};
 
 const createTransaction = async ({ userId, body }) => {
-    const {
-        type,
-        amount,
-        description,
-        category,
-        cardId,
-        recipientId,
-        recipientAccount,
-        recipientName,
-        clientRequestId
-    } = body;
+    const { type, amount, description, category, cardId, recipientId, recipientAccount, recipientName, clientRequestId } = body;
 
     if (clientRequestId) {
-        const existingTransaction = await Transaction.findOne({ userId, clientRequestId });
-        if (existingTransaction) {
-            return { existingTransaction, duplicateIgnored: true };
-        }
+        const existing = await Transaction.findOne({ userId, clientRequestId });
+        if (existing) return { existingTransaction: existing, duplicateIgnored: true };
     }
 
     const numericAmount = roundTwo(Number(amount));
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-        throw createServiceError('Invalid amount', 400);
-    }
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) throw createServiceError('Invalid amount', 400);
 
-    const finalDescription = description && description.trim().length > 0
-        ? description.trim()
-        : (type === 'credit' ? 'Credit transaction' : 'Debit transaction');
-    const normalizedCategory = typeof category === 'string' ? category.trim() : '';
-    const defaultCategory = type === 'credit' ? 'deposit' : type === 'debit' ? 'withdrawal' : 'transfer';
-    const finalCategory = normalizedCategory || defaultCategory;
+    const finalDesc = description?.trim() || (type === 'credit' ? 'Credit transaction' : 'Debit transaction');
+    const finalCategory = category?.trim() || (type === 'credit' ? 'deposit' : type === 'debit' ? 'withdrawal' : 'transfer');
 
     let validatedCard = null;
     if (cardId) {
         validatedCard = await Card.findById(cardId);
-        if (!validatedCard) {
-            throw createServiceError('Card not found', 404);
-        }
-
-        if (validatedCard.userId.toString() !== userId.toString()) {
-            throw createServiceError('Not authorized to use this card', 403);
-        }
-
-        if (type === 'debit' && !validatedCard.canTransact(numericAmount, 'online')) {
-            throw createServiceError('Card is locked or unavailable for transactions', 400);
-        }
+        if (!validatedCard) throw createServiceError('Card not found', 404);
+        if (validatedCard.userId.toString() !== userId.toString()) throw createServiceError('Not authorized to use this card', 403);
+        if (type === 'debit' && !validatedCard.canTransact(numericAmount, 'online')) throw createServiceError('Card is locked or unavailable for transactions', 400);
     }
 
-    let session;
-    try {
-        let transaction;
-        let user;
+    let transaction, user;
 
-        const createWithoutSession = async () => {
-            user = await User.findById(userId);
-            if (!user) {
-                throw createServiceError('User not found', 404);
-            }
+    await withTransactionOrFallback(async (sess) => {
+        const opts = sess ? { session: sess } : {};
+        user = await User.findById(userId, null, opts);
+        if (!user) throw createServiceError('User not found', 404);
 
-            let newBalance = roundTwo(Number(user.balance));
-            if (type === 'credit') {
-                newBalance = roundTwo(newBalance + numericAmount);
-            } else if (type === 'debit') {
-                if (newBalance < numericAmount) {
-                    throw createServiceError('Insufficient balance', 400);
-                }
-                newBalance = roundTwo(newBalance - numericAmount);
-            }
-
-            transaction = await Transaction.create({
-                userId,
-                type,
-                amount: numericAmount,
-                balance: newBalance,
-                description: finalDescription,
-                category: finalCategory,
-                cardId: validatedCard ? validatedCard._id : undefined,
-                clientRequestId,
-                recipientId,
-                recipientAccount,
-                recipientName
-            });
-
-            await User.updateOne({ _id: userId }, { balance: newBalance });
-
-            if (type === 'transfer' && recipientId) {
-                const recipient = await User.findById(recipientId);
-                if (recipient) {
-                    const recipientNewBalance = roundTwo(Number(recipient.balance) + numericAmount);
-
-                    await Transaction.create({
-                        userId: recipientId,
-                        type: 'credit',
-                        amount: numericAmount,
-                        balance: recipientNewBalance,
-                        description: `Transfer from ${user.name}`,
-                        category: 'transfer'
-                    });
-
-                    await User.updateOne({ _id: recipientId }, { balance: recipientNewBalance });
-                }
-            }
-        };
-
-        if (useDbTransactions) {
-            try {
-                session = await mongoose.startSession();
-                await session.withTransaction(async () => {
-                    user = await User.findById(userId).session(session);
-                    if (!user) {
-                        throw createServiceError('User not found', 404);
-                    }
-
-                    let newBalance = roundTwo(Number(user.balance));
-                    if (type === 'credit') {
-                        newBalance = roundTwo(newBalance + numericAmount);
-                    } else if (type === 'debit') {
-                        if (newBalance < numericAmount) {
-                            throw createServiceError('Insufficient balance', 400);
-                        }
-                        newBalance = roundTwo(newBalance - numericAmount);
-                    }
-
-                    transaction = (await Transaction.create([{
-                        userId,
-                        type,
-                        amount: numericAmount,
-                        balance: newBalance,
-                        description: finalDescription,
-                        category: finalCategory,
-                        cardId: validatedCard ? validatedCard._id : undefined,
-                        clientRequestId,
-                        recipientId,
-                        recipientAccount,
-                        recipientName
-                    }], { session }))[0];
-
-                    await User.updateOne({ _id: userId }, { balance: newBalance }, { session });
-
-                    if (type === 'transfer' && recipientId) {
-                        const recipient = await User.findById(recipientId).session(session);
-                        if (recipient) {
-                            const recipientNewBalance = roundTwo(Number(recipient.balance) + numericAmount);
-
-                            await Transaction.create([{
-                                userId: recipientId,
-                                type: 'credit',
-                                amount: numericAmount,
-                                balance: recipientNewBalance,
-                                description: `Transfer from ${user.name}`,
-                                category: 'transfer'
-                            }], { session });
-
-                            await User.updateOne({ _id: recipientId }, { balance: recipientNewBalance }, { session });
-                        }
-                    }
-                });
-            } catch (transactionError) {
-                if (isTransactionUnsupportedError(transactionError)) {
-                    await createWithoutSession();
-                } else {
-                    throw transactionError;
-                }
-            }
-        } else {
-            await createWithoutSession();
+        let newBalance = roundTwo(Number(user.balance));
+        if (type === 'credit') newBalance = roundTwo(newBalance + numericAmount);
+        else if (type === 'debit' || type === 'transfer') {
+            if (newBalance < numericAmount) throw createServiceError('Insufficient balance', 400);
+            newBalance = roundTwo(newBalance - numericAmount);
         }
 
-        const createdNotification = await notificationService.createNotification({
-            userId,
-            type: 'transaction',
-            title: type === 'credit' ? 'Deposit Successful' : 'Withdrawal Successful',
-            message: `Rs ${numericAmount.toLocaleString('en-IN')} ${type === 'credit' ? 'credited to' : 'debited from'} your account.`,
-            relatedId: transaction._id,
-            relatedModel: 'Transaction',
-            metadata: {
-                amount: numericAmount,
-                category: finalCategory
-            }
-        });
+        const txPayload = { userId, type, amount: numericAmount, balance: newBalance, description: finalDesc, category: finalCategory, cardId: validatedCard?._id, clientRequestId, recipientId, recipientAccount, recipientName };
+        transaction = sess ? (await Transaction.create([txPayload], { session: sess }))[0] : await Transaction.create(txPayload);
+        await User.updateOne({ _id: userId }, { balance: newBalance }, opts);
 
-        const emailSent = notificationService.sendTransactionEmailIfEnabled({
-            user,
-            details: {
-                type,
-                amount: numericAmount,
-                currency: 'INR',
-                description: finalDescription,
-                timestamp: transaction.createdAt
-            }
-        });
+        // NOTE: transfer recipient crediting is handled exclusively by transfer.service.js
+        // Do NOT credit the recipient here to avoid double-credit bugs.
+    });
 
-        const transactionData = transaction.toObject();
-        transactionData.delivery = {
-            notificationCreated: !!createdNotification,
-            emailSent
-        };
+    const createdNotif = await notificationService.createNotification({
+        userId, type: 'transaction', title: type === 'credit' ? 'Deposit Successful' : 'Withdrawal Successful',
+        message: `Rs ${numericAmount.toLocaleString('en-IN')} ${type === 'credit' ? 'credited to' : 'debited from'} your account.`,
+        relatedId: transaction._id, relatedModel: 'Transaction', metadata: { amount: numericAmount, category: finalCategory }
+    });
 
-        return { transactionData, duplicateIgnored: false };
-    } finally {
-        if (session) session.endSession();
-    }
+    const emailSent = notificationService.sendTransactionEmailIfEnabled({
+        user, details: { type, amount: numericAmount, currency: 'INR', description: finalDesc, timestamp: transaction.createdAt }
+    });
+
+    const txData = transaction.toObject();
+    txData.delivery = { notificationCreated: !!createdNotif, emailSent };
+    return { transactionData: txData, duplicateIgnored: false };
 };
 
 const deleteTransaction = async ({ userId, transactionId }) => {
-    const transaction = await Transaction.findById(transactionId);
+    const tx = await Transaction.findById(transactionId);
+    if (!tx) throw createServiceError('Transaction not found', 404);
+    if (tx.userId.toString() !== userId.toString()) throw createServiceError('Not authorized to delete this transaction', 403);
+    const owner = await User.findById(tx.userId);
+    if (!owner) throw createServiceError('User not found', 404);
 
-    if (!transaction) {
-        throw createServiceError('Transaction not found', 404);
-    }
+    let newBal = roundTwo(Number(owner.balance) || 0);
+    if (tx.type === 'credit') newBal = roundTwo(newBal - (Number(tx.amount) || 0));
+    else if (tx.type === 'debit' || tx.type === 'transfer') newBal = roundTwo(newBal + (Number(tx.amount) || 0));
+    if (newBal < 0) throw createServiceError('Deleting this transaction would result in a negative balance', 400);
 
-    if (transaction.userId.toString() !== userId.toString()) {
-        throw createServiceError('Not authorized to delete this transaction', 403);
-    }
+    await withTransactionOrFallback(async (sess) => {
+        const opts = sess ? { session: sess } : {};
+        await User.findByIdAndUpdate(tx.userId, { balance: newBal }, { ...opts, runValidators: true });
+        await Transaction.findByIdAndDelete(transactionId, opts);
 
-    const balanceOwner = await User.findById(transaction.userId);
-    if (!balanceOwner) {
-        throw createServiceError('User not found', 404);
-    }
+        // If this was a transfer debit, find and delete the matching recipient credit
+        // and reverse the recipient's balance to prevent phantom money creation
+        if ((tx.type === 'debit' || tx.type === 'transfer') && tx.recipientId) {
+            const recipientTx = await Transaction.findOne({
+                userId: tx.recipientId,
+                type: 'credit',
+                amount: tx.amount,
+                category: 'transfer',
+                recipientId: tx.userId
+            }, null, opts);
 
-    let newBalance = Number(balanceOwner.balance) || 0;
-
-    if (transaction.type === 'credit') {
-        newBalance -= Number(transaction.amount) || 0;
-    } else if (transaction.type === 'debit') {
-        newBalance += Number(transaction.amount) || 0;
-    }
-
-    await User.findByIdAndUpdate(transaction.userId, { balance: roundTwo(newBalance) });
-    await Transaction.findByIdAndDelete(transactionId);
+            if (recipientTx) {
+                const recipientOwner = await User.findById(tx.recipientId, null, opts);
+                if (recipientOwner) {
+                    const recipientNewBal = roundTwo(Number(recipientOwner.balance) - (Number(tx.amount) || 0));
+                    if (recipientNewBal >= 0) {
+                        await User.findByIdAndUpdate(tx.recipientId, { balance: recipientNewBal }, { ...opts, runValidators: true });
+                    }
+                }
+                await Transaction.findByIdAndDelete(recipientTx._id, opts);
+            }
+        }
+    });
 };
 
-module.exports = {
-    createTransaction,
-    deleteTransaction,
-    createServiceError
-};
+module.exports = { createTransaction, deleteTransaction, createServiceError };

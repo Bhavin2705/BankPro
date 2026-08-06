@@ -1,4 +1,4 @@
-﻿.transaction-main {
+.transaction-main {
   min-width: 0;
 }
 
@@ -126,6 +126,23 @@
 .transactions-list-description,
 .transactions-list-meta {
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .transactions-list-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .transactions-action-btn,
+  .transactions-detail-btn,
+  .transactions-options-btn,
+  .transactions-new-action-btn,
+  .transactions-modal-actions-row button {
+    width: 100%;
+  }
 }
 
 .transactions-list-amount {
@@ -260,6 +277,13 @@
   margin-top: 0.65rem;
   font-size: 0.85rem;
   color: var(--text-secondary);
+}
+
+.transactions-no-card-note {
+  margin-top: 0.5rem;
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  font-style: italic;
 }
 
 .transactions-bank-select {

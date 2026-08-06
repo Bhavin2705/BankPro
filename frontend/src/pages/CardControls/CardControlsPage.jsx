@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNotification } from '../../components/providers/NotificationProvider';
 import api from '../../utils/api';
+import '../../styles/pages/CardControls.css';
 import { getAllUsers } from '../../utils/auth';
 
 const getUserId = (entry) => entry?._id || entry?.id || '';
@@ -55,7 +56,7 @@ export default function CardControls() {
         await handleSelectUser(nonAdminUsers[0]);
       }
     } catch (error) {
-      console.error('Failed to load users:', error);
+      
       showError('Failed to load users');
     } finally {
       setLoadingUsers(false);
@@ -76,7 +77,7 @@ export default function CardControls() {
         showError(cardsRes?.error || 'Failed to load user cards');
       }
     } catch (error) {
-      console.error('Failed to load cards:', error);
+      
       setUserCards([]);
       showError(error.message || 'Failed to load user cards');
     } finally {

@@ -1,31 +1,17 @@
-const authRoutes = require('./auth');
-const userRoutes = require('./users');
-const transactionRoutes = require('./transactions');
-const recurringRoutes = require('./recurring');
-const billsRoutes = require('./bills');
-const banksRoutes = require('./banks');
-const cardRoutes = require('./cards');
-const exchangeRoutes = require('./exchange');
-const notificationRoutes = require('./notifications');
-const budgetsRoutes = require('./budgets');
-const settingsRoutes = require('./settings');
-const kycRoutes = require('./kyc');
-const adminKycRoutes = require('./adminKyc');
-
-const registerApiRoutes = (app) => {
-    app.use('/api/auth', authRoutes);
-    app.use('/api/users', userRoutes);
-    app.use('/api/transactions', transactionRoutes);
-    app.use('/api/recurring', recurringRoutes);
-    app.use('/api/bills', billsRoutes);
-    app.use('/api/banks', banksRoutes);
-    app.use('/api/cards', cardRoutes);
-    app.use('/api/exchange', exchangeRoutes);
-    app.use('/api/notifications', notificationRoutes);
-    app.use('/api/budgets', budgetsRoutes);
-    app.use('/api/settings', settingsRoutes);
-    app.use('/api/kyc', kycRoutes);
-    app.use('/api/admin/kyc', adminKycRoutes);
+const registerApiRoutes = app => {
+    app.use('/api/auth', require('./auth'));
+    app.use('/api/users', require('./users'));
+    app.use('/api/transactions', require('./transactions'));
+    app.use('/api/recurring', require('./recurring'));
+    app.use('/api/bills', require('./bills'));
+    app.use('/api/banks', require('./banks'));
+    app.use('/api/cards', require('./cards'));
+    app.use('/api/exchange', require('./exchange'));
+    app.use('/api/notifications', require('./notifications'));
+    app.use('/api/budgets', require('./budgets'));
+    app.use('/api/settings', require('./settings'));
+    app.use('/api/kyc', require('./kyc'));
+    app.use('/api/admin/kyc', require('./adminKyc'));
 };
 
 module.exports = registerApiRoutes;

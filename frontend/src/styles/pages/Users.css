@@ -37,8 +37,19 @@
 .users-admin-layout {
   display: grid;
   gap: 1rem;
-  grid-template-columns: minmax(560px, 1.45fr) minmax(360px, 1fr);
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
   align-items: start;
+}
+
+@media (max-width: 768px) {
+  .users-admin-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.overflow-x-auto,
+.users-table-container {
+  overflow-x: auto;
 }
 
 .users-section-title {

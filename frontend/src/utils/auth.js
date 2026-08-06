@@ -8,7 +8,8 @@ const withOptionalOtp = (payload, otp) => (otp ? { ...payload, otp } : payload);
 
 const mapAuthResponse = (response) => {
   if (response?.success) {
-    return { success: true, user: response.data.user };
+    const user = response.data?.user || response.data;
+    return { success: true, user };
   }
 
   if (response?.requiresTwoFactor) {
@@ -76,8 +77,9 @@ export const login = async (identifier, password, otp) => {
   try {
     const payload = withOptionalOtp({ identifier, password }, otp);
     const response = await api.auth.login(payload);
-    if (response?.success && response?.data?.user) {
-      writeStoredUser(response.data.user);
+    const user = response?.data?.user || response?.data;
+    if (response?.success && user) {
+      writeStoredUser(user);
     }
     return mapAuthResponse(response);
   } catch (error) {
@@ -91,8 +93,9 @@ export const loginWithAccount = async (identifier, password, accountId, otp) => 
   try {
     const payload = withOptionalOtp({ identifier, password, accountId }, otp);
     const response = await api.auth.loginWithAccount(payload);
-    if (response?.success && response?.data?.user) {
-      writeStoredUser(response.data.user);
+    const user = response?.data?.user || response?.data;
+    if (response?.success && user) {
+      writeStoredUser(user);
     }
     return mapAuthResponse(response);
   } catch (error) {
@@ -105,8 +108,9 @@ export const register = async (userData) => {
     const response = await api.auth.register(userData);
 
     if (response.success) {
-      writeStoredUser(response.data.user);
-      return { success: true, user: response.data.user };
+      const user = response.data?.user || response.data;
+      writeStoredUser(user);
+      return { success: true, user };
     }
 
     return { success: false, error: 'Registration failed' };
@@ -127,12 +131,10 @@ export const logout = async () => {
     try {
       clearAuthToken();
       clearStoredUser();
-      document.cookie = 'bank_auth_token=; path=/; max-age=0';
-      document.cookie = 'bank_auth_refresh_token=; path=/; max-age=0';
-      document.cookie = 'token=; path=/; max-age=0';
-      document.cookie = 'refreshToken=; path=/; max-age=0';
+      // httpOnly cookies (token, refreshToken) are expired by the backend /logout response.
+      // Do NOT attempt to delete them here — JS cannot touch httpOnly cookies.
     } catch (clearError) {
-      console.debug('Failed to clear auth cookies:', clearError?.message || 'unknown error');
+      console.debug('Failed to clear auth state:', clearError?.message || 'unknown error');
     }
   }
 };
@@ -161,7 +163,7 @@ export const updateUserBalance = async (userId, newBalance) => {
     writeStoredUser(nextUser);
     return nextUser;
   } catch (error) {
-    console.error('Error updating user balance:', error);
+    
     return { balance: newBalance };
   }
 };
@@ -191,7 +193,7 @@ export const refreshUserData = async () => {
         return null;
       } catch (refreshError) {
         if (import.meta.env && import.meta.env.DEV) {
-          console.error('Token refresh error:', refreshError);
+          
         }
         return null;
       }
@@ -222,7 +224,7 @@ export const getAllUsers = async (params = {}) => {
     if (error.message && error.message.includes('not authorized')) {
       return fallback;
     }
-    console.error('Error fetching users:', error);
+    
     return fallback;
   }
 };
@@ -232,7 +234,7 @@ export const getNonAdminUsers = async () => {
     const response = await api.users.getTransferRecipients();
     return response.success ? response.data : [];
   } catch (error) {
-    console.error('Error fetching transfer recipients:', error);
+    
     return [];
   }
 };

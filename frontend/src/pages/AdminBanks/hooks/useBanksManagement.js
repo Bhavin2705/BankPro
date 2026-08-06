@@ -35,8 +35,8 @@ export function useBanksManagement(showError, showSuccess) {
       return;
     }
 
-    if (!/^[A-Z0-9]{4}$/.test(bankCode)) {
-      showError('Bank code must be exactly 4 letters/numbers (e.g., SBIN)');
+    if (!/^[A-Z0-9]{2,20}$/.test(bankCode)) {
+      showError('Bank code must be between 2 and 20 letters/numbers (e.g., SBIN)');
       return;
     }
 
@@ -102,8 +102,8 @@ export function useBanksManagement(showError, showSuccess) {
       return;
     }
 
-    if (!/^[A-Z0-9]{4}$/.test(bankCode)) {
-      showError('Bank code must be exactly 4 letters/numbers (e.g., SBIN)');
+    if (!/^[A-Z0-9]{2,20}$/.test(bankCode)) {
+      showError('Bank code must be between 2 and 20 letters/numbers (e.g., SBIN)');
       return;
     }
 

@@ -1,5 +1,5 @@
 import { Activity, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
-import { formatTransactionDate } from '../utils';
+import { formatTransactionDate } from '../../../utils/date';
 
 const EMAIL_LIKE_TEXT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

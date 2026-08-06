@@ -162,7 +162,7 @@ export const generatePDFFromHTML = async (element, fileName) => {
 
         pdf.save(fileName);
     } catch (error) {
-        console.error('Error generating PDF from HTML:', error);
+        
         throw error;
     }
 };

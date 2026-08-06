@@ -1,4 +1,4 @@
-﻿.virtual-card-overlay {
+.virtual-card-overlay {
   position: fixed;
   inset: 0;
   background: rgba(8, 12, 28, 0.62);
@@ -89,22 +89,14 @@
 
 .virtual-card-number {
   font-family: "Courier New", monospace;
+}
+
+.virtual-card-number {
+  font-family: "Courier New", monospace;
   font-size: clamp(1rem, 3vw, 1.35rem);
   letter-spacing: 0.14em;
   margin-bottom: 1rem;
   word-break: break-all;
-}
-
-.virtual-card-bottom-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 0.75rem;
-  align-items: end;
-}
-
-.virtual-card-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
   letter-spacing: 0.08em;
   opacity: 0.78;
 }
@@ -197,20 +189,20 @@
 @media (max-width: 480px) {
   .virtual-card-modal {
     padding: 0.95rem;
-  }
+}
 
   .virtual-card-controls {
     grid-template-columns: 1fr;
-  }
+}
 
   .virtual-card-bottom-row {
     grid-template-columns: 1fr 1fr;
     gap: 0.55rem;
-  }
+}
 
   .virtual-card-brand-block {
     grid-column: 1 / -1;
-  }
+}
 }
 
 /* Virtual Card V2 polish */
@@ -413,75 +405,75 @@
   .virtual-card-modal {
     border-radius: 18px;
     padding: 1rem;
-  }
+}
 
   .virtual-card-modal-header h3 {
     font-size: 1.22rem;
-  }
+}
 
   .virtual-card-number {
     letter-spacing: 0.13em;
-  }
+}
 
   .virtual-card-product {
     display: none;
-  }
+}
 }
 
 @media (max-width: 560px) {
   .virtual-card-overlay {
     padding: 0.7rem;
-  }
+}
 
   .virtual-card-modal {
     max-height: calc(100vh - 1.4rem);
     overflow-y: auto;
     padding: 0.9rem;
-  }
+}
 
   .virtual-card-face {
     aspect-ratio: 1.62 / 1;
     padding: 0.8rem;
-  }
+}
 
   .virtual-card-top-row {
     margin-bottom: 0.5rem;
-  }
+}
 
   .virtual-card-chip {
     width: 40px;
     height: 28px;
     margin-bottom: 0.45rem;
-  }
+}
 
   .virtual-card-number {
     font-size: 0.97rem;
     letter-spacing: 0.11em;
     margin-bottom: 0.55rem;
-  }
+}
 
   .virtual-card-bottom-row {
     gap: 0.5rem;
     padding-top: 0.3rem;
-  }
+}
 
   .virtual-card-label {
     font-size: 0.63rem;
-  }
+}
 
   .virtual-card-value {
     font-size: 0.86rem;
-  }
+}
 
   .virtual-card-brand-block {
     grid-column: 1 / -1;
     justify-self: start;
-  }
+}
 
   .virtual-card-meta {
     flex-wrap: wrap;
     row-gap: 0.3rem;
-  }
+}
 }
 
 [data-theme="dark"] .transaction-item,
@@ -624,19 +616,19 @@
   .cvv-pin-modal {
     padding: 1.1rem;
     border-radius: 14px;
-  }
+}
 
   .cvv-pin-modal-title {
     font-size: 1rem;
-  }
+}
 
   .cvv-pin-modal-input {
     font-size: 0.98rem;
-  }
+}
 
   .cvv-pin-modal-actions {
     flex-direction: column;
-  }
+}
 }
 
 /* Cards polish */
@@ -945,39 +937,39 @@
   .cards-page .btn {
     width: 100%;
     justify-content: center;
-  }
+}
 
   .cards-list-card {
     padding: 1rem;
-  }
+}
 
   .card-item {
     padding: 1rem !important;
-  }
+}
 
   .card-item-main {
     flex-direction: column;
     align-items: stretch !important;
-  }
+}
 
   .card-item-content {
     width: 100%;
-  }
+}
 
   .card-item-heading {
     flex-wrap: wrap;
-  }
+}
 
   .card-item-number {
     font-size: 1.02rem !important;
     letter-spacing: 0.02em;
-  }
+}
 
   .card-item-meta {
     gap: 0.6rem !important;
     font-size: 0.84rem !important;
     align-items: flex-start !important;
-  }
+}
 
   .card-item-actions {
     width: 100%;
@@ -985,21 +977,24 @@
     flex-direction: column;
     gap: 0.5rem !important;
     align-items: stretch;
-  }
+}
 
   .card-item-quick-actions {
     justify-content: flex-end;
-  }
+}
 
   .card-item-main-actions {
     width: 100%;
     min-width: 0;
-  }
+}
+
+  .card-item-main-actions .card-item-action-btn {
+}
 
   .card-item-main-actions .card-item-action-btn {
     width: 100%;
     justify-content: center;
-  }
+}
 }
 
 [data-theme="dark"] .card-item {
@@ -1007,3 +1002,17 @@
   background: linear-gradient(180deg, #13243b 0%, #102033 100%) !important;
 }
 
+@media (min-width: 1200px) {
+  .cards-main-container {
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .card-widget,
+  .card-item {
+    max-width: 420px;
+  }
+}

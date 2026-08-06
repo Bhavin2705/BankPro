@@ -1,14 +1,16 @@
-﻿import { Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNotification } from '../../components/providers/NotificationProvider';
 import api from '../../utils/api';
 import ConfirmModal from '../../components/common/ConfirmModal';
-import { CvvPinModal } from '../../shared/components/modals';
+import PinModal from '../../components/modals/PinModal';
 import { AddCardForm, CardsList, CardsStats, VirtualCardModal } from './components';
 import { formatCardNumber, generateCardNumber, generateExpiryDate } from './utils';
+import '../../styles/pages/Cards.css';
 
 const initialFormData = {
   cardType: 'debit',
+  cardBrand: 'visa',
   cardName: '',
   pin: '',
 };
@@ -43,7 +45,7 @@ const Cards = ({ user }) => {
         showError(res?.error || 'Failed to load cards');
       }
     } catch (err) {
-      console.error('Error loading cards:', err);
+      
       setCards([]);
       showError(err.message || 'Failed to load cards');
     }
@@ -62,13 +64,13 @@ const Cards = ({ user }) => {
       return;
     }
 
-    if (formData.pin.length !== 4 || !/^\d+$/.test(formData.pin)) {
-      showError('PIN must be 4 digits');
+    if (!/^\d{4,6}$/.test(formData.pin)) {
+      showError('PIN must be 4 to 6 digits');
       return;
     }
 
     const safeCardType = formData.cardType === 'credit' ? 'credit' : 'debit';
-    const safeCardBrand = safeCardType === 'debit' ? 'visa' : 'mastercard';
+    const safeCardBrand = ['visa', 'mastercard', 'rupay', 'amex'].includes(formData.cardBrand) ? formData.cardBrand : (safeCardType === 'debit' ? 'visa' : 'mastercard');
 
     const newCard = {
       id: Date.now().toString(),
@@ -92,7 +94,7 @@ const Cards = ({ user }) => {
         showError(result.error || 'Failed to create card');
       }
     } catch (err) {
-      console.error('Create card error:', err);
+      
       showError(err.message || 'Create card failed');
     } finally {
       setCreatingCard(false);
@@ -198,7 +200,7 @@ const Cards = ({ user }) => {
         await loadCards();
       }
     } catch (err) {
-      console.error('Toggle lock error:', err);
+      
       showError(err.message || 'Failed to submit card status request');
     } finally {
       setUpdatingCardId(null);
@@ -258,7 +260,7 @@ const Cards = ({ user }) => {
         setModal({ open: false });
       }
     } catch (err) {
-      console.error('Close card error:', err);
+      
       showError(err.message || 'Failed to close card');
       setModal({ open: false });
     } finally {
@@ -271,7 +273,7 @@ const Cards = ({ user }) => {
   };
 
   return (
-    <div className="container cards-page">
+    <div className="container cards-page cards-main-container">
       <div className="cards-header">
         <h1 className="cards-header-title">Card Management</h1>
         <p className="cards-header-subtitle">Manage your debit and credit cards</p>
@@ -326,14 +328,14 @@ const Cards = ({ user }) => {
         onCancel={handleModalCancel}
         onConfirm={handleModalConfirm}
       />
-      <CvvPinModal
+      <PinModal
         show={showCvvPinModal}
-        cvvPin={cvvPin}
-        cvvPinError={cvvPinError}
-        cvvPinVerifying={cvvPinVerifying}
-        setCvvPin={setCvvPin}
-        onClose={closeCvvPinModal}
-        onVerify={verifyCvvPin}
+        pin={cvvPin}
+        pinError={cvvPinError}
+        pinVerifying={cvvPinVerifying}
+        setPin={setCvvPin}
+        onCancel={closeCvvPinModal}
+        onConfirm={verifyCvvPin}
       />
       <VirtualCardModal
         show={!!selectedVirtualCard}

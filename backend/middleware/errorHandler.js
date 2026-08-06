@@ -1,46 +1,43 @@
 const errorHandler = (err, req, res, next) => {
-    let error = { ...err };
-    error.message = err.message;
-
-    console.error(err);
+    let msg = err.message || 'Server Error';
+    let status = err.statusCode || 500;
 
     if (err.name === 'CastError') {
-        const message = 'Resource not found';
-        error = { message, statusCode: 404 };
+        msg = 'Resource not found';
+        status = 404;
+    } else if (err.message && err.message.startsWith('Not allowed by CORS')) {
+        status = 403;
+    } else if (err.code === 11000) {
+        const field = Object.keys(err.keyValue || {})[0] || 'field';
+        msg = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
+        status = 400;
+    } else if (err.name === 'ValidationError') {
+        msg = Object.values(err.errors || {}).map(v => v.message).join(', ');
+        status = 400;
+    } else if (err.name === 'JsonWebTokenError') {
+        msg = 'Invalid token';
+        status = 401;
+    } else if (err.name === 'TokenExpiredError') {
+        msg = 'Token expired';
+        status = 401;
+    } else if (err.name === 'MulterError') {
+        msg = err.code === 'LIMIT_FILE_SIZE' ? 'File is too large. Max size is 2MB.' : err.message;
+        status = 400;
     }
 
-    if (err.code === 11000) {
-        const field = Object.keys(err.keyValue)[0];
-        const message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
-        error = { message, statusCode: 400 };
+    const timestamp = new Date().toISOString();
+
+    // Log full stack trace for 500 server errors, concise 1-liner for 4xx client errors
+    if (status >= 500) {
+        console.error(`[${timestamp}] 500 Internal Error (${req.method} ${req.originalUrl || req.url}):`, err);
+    } else {
+        console.warn(`[${timestamp}] ${status} ${req.method} ${req.originalUrl || req.url} - ${msg}`);
     }
 
-    if (err.name === 'ValidationError') {
-        const message = Object.values(err.errors).map(val => val.message);
-        error = { message: message.join(', '), statusCode: 400 };
-    }
-
-    if (err.name === 'JsonWebTokenError') {
-        const message = 'Invalid token';
-        error = { message, statusCode: 401 };
-    }
-
-    if (err.name === 'TokenExpiredError') {
-        const message = 'Token expired';
-        error = { message, statusCode: 401 };
-    }
-
-    if (err.name === 'MulterError') {
-        const message = err.code === 'LIMIT_FILE_SIZE'
-            ? 'File is too large. Max size is 2MB.'
-            : err.message;
-        error = { message, statusCode: 400 };
-    }
-
-    res.status(error.statusCode || 500).json({
+    res.status(status).json({
         success: false,
-        error: error.message || 'Server Error',
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+        error: msg,
+        ...(process.env.NODE_ENV === 'development' && status >= 500 && { stack: err.stack })
     });
 };
 

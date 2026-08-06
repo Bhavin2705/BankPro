@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNotification } from '../../components/providers/NotificationProvider';
 import { api, API_BASE_URL } from '../../utils/api';
 import AccountsTab from './components/AccountsTab';
@@ -8,9 +8,9 @@ import ProfileTab from './components/ProfileTab';
 import SecurityTab from './components/SecurityTab';
 import SessionsTab from './components/SessionsTab';
 import SettingsTabs from './components/SettingsTabs';
+import '../../styles/pages/Settings.css';
 import {
   getInitialBankData,
-  getInitialPasswordData,
   getInitialPreferencesData,
   getInitialProfileData
 } from './utils';
@@ -19,14 +19,7 @@ const Settings = ({ user, onUserUpdate }) => {
   const { showSuccess, showError } = useNotification();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState({
-    profile: false,
-    password: false,
-    preferences: false,
-    twoFactor: false,
-    bank: false,
-    accounts: false,
-    sessions: false,
-    bootstrap: false
+    profile: false, preferences: false, twoFactor: false, bank: false, accounts: false, sessions: false, bootstrap: false
   });
   const [linkedAccounts, setLinkedAccounts] = useState([]);
   const [sessions, setSessions] = useState(null);
@@ -37,20 +30,12 @@ const Settings = ({ user, onUserUpdate }) => {
   const [profilePhotoError, setProfilePhotoError] = useState(false);
   const [profilePhotoVersion, setProfilePhotoVersion] = useState(0);
   const [kycStatus, setKycStatus] = useState(user?.kyc || { status: 'unverified' });
-  const [kycForm, setKycForm] = useState({
-    idType: 'aadhaar',
-    idNumber: '',
-    documents: []
-  });
+  const [kycForm, setKycForm] = useState({ idType: 'aadhaar', idNumber: '', documents: [] });
   const [kycSubmitting, setKycSubmitting] = useState(false);
   const [locatingAddress, setLocatingAddress] = useState(false);
   const [bankData, setBankData] = useState(getInitialBankData(user));
-  const [passwordData, setPasswordData] = useState(getInitialPasswordData());
   const [preferencesData, setPreferencesData] = useState(getInitialPreferencesData(user));
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(user.security?.twoFactorEnabled || false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -81,24 +66,22 @@ const Settings = ({ user, onUserUpdate }) => {
         if (settingsRes?.success && settingsRes?.data) {
           const settings = settingsRes.data;
 
-            setProfileData((prev) => ({
-              ...prev,
-              name: settings.profile?.name ?? prev.name,
-              email: settings.profile?.email ?? prev.email,
-              phone: settings.profile?.phone ?? prev.phone,
-              photoUrl: settings.profile?.photoUrl ?? prev.photoUrl,
-              dateOfBirth: settings.profile?.dateOfBirth
-                ? new Date(settings.profile.dateOfBirth).toISOString().slice(0, 10)
-                : '',
-              occupation: settings.profile?.occupation ?? prev.occupation,
-              address: typeof settings.profile?.address === 'object'
-                ? settings.profile.address?.street || ''
-                : settings.profile?.address || ''
-            }));
-            setProfilePhotoError(false);
-            if (settings.kyc) {
-              setKycStatus(settings.kyc);
-            }
+          setProfileData((prev) => ({
+            ...prev,
+            name: settings.profile?.name ?? prev.name,
+            email: settings.profile?.email ?? prev.email,
+            phone: settings.profile?.phone ?? prev.phone,
+            photoUrl: settings.profile?.photoUrl ?? prev.photoUrl,
+            dateOfBirth: settings.profile?.dateOfBirth
+              ? new Date(settings.profile.dateOfBirth).toISOString().slice(0, 10)
+              : '',
+            occupation: settings.profile?.occupation ?? prev.occupation,
+            address: typeof settings.profile?.address === 'object'
+              ? settings.profile.address?.street || ''
+              : settings.profile?.address || ''
+          }));
+          setProfilePhotoError(false);
+          if (settings.kyc) setKycStatus(settings.kyc);
 
           setBankData((prev) => ({
             ...prev,
@@ -122,15 +105,9 @@ const Settings = ({ user, onUserUpdate }) => {
           setTwoFactorEnabled(settings.security?.twoFactorEnabled || false);
         }
 
-        if (accountsRes?.success) {
-          setLinkedAccounts(accountsRes.data || []);
-        }
-
-        if (sessionsRes?.success) {
-          setSessions(sessionsRes.data || null);
-        }
-      } catch (loadError) {
-        console.error('Error loading settings data:', loadError);
+        if (accountsRes?.success) setLinkedAccounts(accountsRes.data || []);
+        if (sessionsRes?.success) setSessions(sessionsRes.data || null);
+      } catch {
         setError('Failed to load settings. Please refresh.');
         showError('Failed to load settings. Please refresh.');
       } finally {
@@ -235,50 +212,6 @@ const Settings = ({ user, onUserUpdate }) => {
     }
 
     setLoading((prev) => ({ ...prev, profile: false }));
-  };
-
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-    setError('');
-    setMessage('');
-    setLoading((prev) => ({ ...prev, password: true }));
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      showError('New passwords do not match!');
-      setLoading((prev) => ({ ...prev, password: false }));
-      return;
-    }
-
-    if (passwordData.newPassword.length < 8) {
-      showError('Password must be at least 8 characters long!');
-      setLoading((prev) => ({ ...prev, password: false }));
-      return;
-    }
-    const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
-    if (!strongPassword.test(passwordData.newPassword)) {
-      showError('Password must include uppercase, lowercase, number, and special character');
-      setLoading((prev) => ({ ...prev, password: false }));
-      return;
-    }
-
-    try {
-      const result = await api.auth.updatePassword({
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword
-      });
-
-      if (result.success) {
-        showSuccess('Password changed successfully!');
-        setPasswordData(getInitialPasswordData());
-      } else {
-        showError(result.error || 'Failed to change password');
-      }
-    } catch (passwordError) {
-      console.error('Password change error:', passwordError);
-      showError('Failed to change password. Please try again.');
-    }
-
-    setLoading((prev) => ({ ...prev, password: false }));
   };
 
   const handlePreferencesUpdate = async (e) => {
@@ -591,13 +524,6 @@ const Settings = ({ user, onUserUpdate }) => {
     }
   };
 
-  const handlePasswordChangeInput = (e) => {
-    setPasswordData({
-      ...passwordData,
-      [e.target.name]: e.target.value
-    });
-  };
-
   const handlePreferencesChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (type === 'checkbox') {
@@ -685,18 +611,9 @@ const Settings = ({ user, onUserUpdate }) => {
         )}
         {activeTab === 'security' && (
           <SecurityTab
-            loading={loading.password || loading.twoFactor}
+            loading={loading.twoFactor}
             twoFactorEnabled={twoFactorEnabled}
             handleTwoFactorToggle={handleTwoFactorToggle}
-            handlePasswordChange={handlePasswordChange}
-            passwordData={passwordData}
-            handlePasswordChangeInput={handlePasswordChangeInput}
-            showCurrentPassword={showCurrentPassword}
-            setShowCurrentPassword={setShowCurrentPassword}
-            showNewPassword={showNewPassword}
-            setShowNewPassword={setShowNewPassword}
-            showConfirmPassword={showConfirmPassword}
-            setShowConfirmPassword={setShowConfirmPassword}
           />
         )}
         {activeTab === 'accounts' && (

@@ -1,264 +1,119 @@
 const Budget = require('../models/Budget');
 const Transaction = require('../models/Transaction');
+const { roundTwo } = require('../helpers/transaction.helpers');
+const asyncHandler = require('../utils/asyncHandler');
 
-const ensureAuthenticatedUser = (req, res) => {
-  if (!req.user || !req.user._id) {
-    res.status(401).json({ success: false, message: 'User not authenticated' });
-    return false;
-  }
-  return true;
-};
-
-const findOwnedBudget = (req, budgetId) => Budget.findOne({ _id: budgetId, userId: req.user._id });
-
-const applyBudgetStatusFromSpent = (budget) => {
-  if (budget.spent > budget.amount) {
-    budget.status = 'over_budget';
-  } else if (budget.status === 'over_budget') {
-    budget.status = 'active';
-  }
+const applyStatus = (b) => {
+    // Never auto-flip a finalized budget
+    if (b.status === 'completed' || b.status === 'cancelled') return;
+    if (b.spent > b.amount) b.status = 'over_budget';
+    else if (b.status === 'over_budget') b.status = 'active';
 };
 
 const getBudgets = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
-    const status = req.query.status;
-
-    let query = { userId: req.user._id };
-    if (status) {
-      query.status = status;
-    }
-
-    const budgets = await Budget.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
+    const query = { userId: req.user._id, ...(req.query.status && { status: req.query.status }) };
+    const budgets = await Budget.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
     const total = await Budget.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      data: budgets,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    });
-  } catch (err) {
-    console.error('Error fetching budgets:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
+    res.status(200).json({ success: true, data: budgets, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
 };
 
 const getBudget = async (req, res) => {
-  try {
-    const budget = await Budget.findOne({
-      _id: req.params.id,
-      userId: req.user._id
-    });
-
+    const budget = await Budget.findOne({ _id: req.params.id, userId: req.user._id });
     if (!budget) {
-      return res.status(404).json({ success: false, message: 'Budget not found' });
+        const error = new Error('Budget not found');
+        error.statusCode = 404;
+        throw error;
     }
-
     res.status(200).json({ success: true, data: budget });
-  } catch (err) {
-    console.error('Error fetching budget:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
 };
 
 const getBudgetSummary = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-
     const summary = await Budget.aggregate([
-      { $match: { userId: req.user._id, status: 'active' } },
-      {
-        $group: {
-          _id: null,
-          totalBudget: { $sum: '$amount' },
-          totalSpent: { $sum: '$spent' },
-          budgetCount: { $sum: 1 },
-          overBudgetCount: {
-            $sum: { $cond: [{ $gte: ['$spent', '$amount'] }, 1, 0] }
-          }
-        }
-      }
+        { $match: { userId: req.user._id, status: 'active' } },
+        { $group: { _id: null, totalBudget: { $sum: '$amount' }, totalSpent: { $sum: '$spent' }, budgetCount: { $sum: 1 }, overBudgetCount: { $sum: { $cond: [{ $gte: ['$spent', '$amount'] }, 1, 0] } } } }
     ]);
-
-    res.status(200).json({
-      success: true,
-      data: summary.length > 0 ? summary[0] : {}
-    });
-  } catch (err) {
-    console.error('Error fetching budget summary:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
+    res.status(200).json({ success: true, data: summary[0] || { totalBudget: 0, totalSpent: 0, budgetCount: 0, overBudgetCount: 0 } });
 };
 
 const createBudget = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-
-    if (!req.body.name || req.body.name.trim() === '') {
-      return res.status(400).json({ success: false, message: 'Budget name is required' });
+    const { name, category, amount, period } = req.body;
+    const numAmount = roundTwo(Number(amount));
+    if (!name?.trim() || !category || !Number.isFinite(numAmount) || numAmount <= 0) {
+        const error = new Error('Valid name, category, and positive amount are required');
+        error.statusCode = 400;
+        throw error;
     }
 
-    if (!req.body.category) {
-      return res.status(400).json({ success: false, message: 'Category is required' });
-    }
-
-    if (!req.body.amount || req.body.amount <= 0) {
-      return res.status(400).json({ success: false, message: 'Budget amount must be positive' });
-    }
-
-    const budget = await Budget.create({
-      userId: req.user._id,
-      name: req.body.name.trim(),
-      category: req.body.category,
-      amount: req.body.amount,
-      period: req.body.period || 'monthly',
-      status: 'active',
-      spent: 0
-    });
-
+    const budget = await Budget.create({ userId: req.user._id, name: name.trim(), category, amount: numAmount, period: period || 'monthly', status: 'active', spent: 0 });
     res.status(201).json({ success: true, data: budget });
-  } catch (err) {
-    console.error('Error creating budget:', err);
-    res.status(400).json({ success: false, message: 'Failed to create budget' });
-  }
 };
 
 const updateBudget = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-    let budget = await findOwnedBudget(req, req.params.id);
-
+    const budget = await Budget.findOne({ _id: req.params.id, userId: req.user._id });
     if (!budget) {
-      return res.status(404).json({ success: false, message: 'Budget not found' });
+        const error = new Error('Budget not found');
+        error.statusCode = 404;
+        throw error;
     }
 
-    const allowedFields = ['name', 'amount', 'period', 'status', 'spent'];
-    Object.keys(req.body).forEach(key => {
-      if (allowedFields.includes(key)) {
-        budget[key] = req.body[key];
-      }
+    ['name', 'amount', 'period', 'status'].forEach(f => {
+        if (req.body[f] !== undefined) {
+            budget[f] = f === 'amount' ? roundTwo(Number(req.body[f])) : req.body[f];
+        }
     });
-
-    applyBudgetStatusFromSpent(budget);
-
-    budget = await budget.save();
-
+    applyStatus(budget);
+    await budget.save();
     res.status(200).json({ success: true, data: budget });
-  } catch (err) {
-    console.error('Error updating budget:', err);
-    res.status(400).json({ success: false, message: 'Failed to update budget' });
-  }
 };
 
 const deleteBudget = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-
-    const budget = await Budget.findOneAndDelete({
-      _id: req.params.id,
-      userId: req.user._id
-    });
-
+    const budget = await Budget.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
     if (!budget) {
-      return res.status(404).json({ success: false, message: 'Budget not found' });
+        const error = new Error('Budget not found');
+        error.statusCode = 404;
+        throw error;
     }
-
     res.status(200).json({ success: true, message: 'Budget deleted successfully' });
-  } catch (err) {
-    console.error('Error deleting budget:', err);
-    res.status(500).json({ success: false, message: 'Failed to delete budget' });
-  }
 };
 
 const updateBudgetSpent = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-    const budget = await findOwnedBudget(req, req.params.id);
-
+    const budget = await Budget.findOne({ _id: req.params.id, userId: req.user._id });
     if (!budget) {
-      return res.status(404).json({ success: false, message: 'Budget not found' });
+        const error = new Error('Budget not found');
+        error.statusCode = 404;
+        throw error;
     }
 
-    const transactions = await Transaction.find({
-      userId: req.user._id,
-      category: budget.category,
-      type: 'debit'
-    });
-
-    const totalSpent = transactions.reduce((sum, t) => sum + t.amount, 0);
-    budget.spent = totalSpent;
-
-    applyBudgetStatusFromSpent(budget);
-
+    const dateFilter = {};
+    if (budget.startDate) dateFilter.$gte = budget.startDate;
+    if (budget.endDate) dateFilter.$lte = budget.endDate;
+    const txQuery = { userId: req.user._id, category: budget.category, type: 'debit' };
+    if (budget.startDate || budget.endDate) txQuery.createdAt = dateFilter;
+    const transactions = await Transaction.find(txQuery);
+    budget.spent = roundTwo(transactions.reduce((sum, t) => sum + (t.amount || 0), 0));
+    applyStatus(budget);
     await budget.save();
-
     res.status(200).json({ success: true, data: budget });
-  } catch (err) {
-    console.error('Error updating budget spent:', err);
-    res.status(400).json({ success: false, message: 'Failed to update budget' });
-  }
 };
 
 const getBudgetStats = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-
-    const stats = await Budget.aggregate([
-      { $match: { userId: req.user._id } },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          totalBudget: { $sum: '$amount' },
-          totalSpent: { $sum: '$spent' }
-        }
-      }
+    const [stats, categoryStats] = await Promise.all([
+        Budget.aggregate([{ $match: { userId: req.user._id } }, { $group: { _id: '$status', count: { $sum: 1 }, totalBudget: { $sum: '$amount' }, totalSpent: { $sum: '$spent' } } }]),
+        Budget.aggregate([{ $match: { userId: req.user._id, status: 'active' } }, { $group: { _id: '$category', amount: { $sum: '$amount' }, spent: { $sum: '$spent' } } }])
     ]);
-
-    const categoryStats = await Budget.aggregate([
-      { $match: { userId: req.user._id, status: 'active' } },
-      {
-        $group: {
-          _id: '$category',
-          amount: { $sum: '$amount' },
-          spent: { $sum: '$spent' }
-        }
-      }
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        byStatus: stats,
-        byCategory: categoryStats
-      }
-    });
-  } catch (err) {
-    console.error('Error fetching budget stats:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
+    res.status(200).json({ success: true, data: { byStatus: stats, byCategory: categoryStats } });
 };
 
 module.exports = {
-  getBudgets,
-  getBudget,
-  getBudgetSummary,
-  createBudget,
-  updateBudget,
-  deleteBudget,
-  updateBudgetSpent,
-  getBudgetStats
+    getBudgets: asyncHandler(getBudgets),
+    getBudget: asyncHandler(getBudget),
+    getBudgetSummary: asyncHandler(getBudgetSummary),
+    createBudget: asyncHandler(createBudget),
+    updateBudget: asyncHandler(updateBudget),
+    deleteBudget: asyncHandler(deleteBudget),
+    updateBudgetSpent: asyncHandler(updateBudgetSpent),
+    getBudgetStats: asyncHandler(getBudgetStats)
 };

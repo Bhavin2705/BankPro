@@ -3,146 +3,62 @@ const crypto = require('crypto');
 
 const JWT_EXPIRE_DAYS = parseInt(process.env.JWT_EXPIRE_DAYS, 10) || 7;
 const JWT_REFRESH_EXPIRE_DAYS = parseInt(process.env.JWT_REFRESH_EXPIRE_DAYS, 10) || 30;
-const TWO_FACTOR_OTP_TTL_MS = 10 * 60 * 1000;
-const LOGIN_HISTORY_LIMIT = 10;
 
-const getJwtSecret = () => {
-    if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not configured');
-    return process.env.JWT_SECRET;
-};
+const getJwtSecret = () => process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET missing'); })();
+const getJwtRefreshSecret = () => process.env.JWT_REFRESH_SECRET || (() => { throw new Error('JWT_REFRESH_SECRET missing'); })();
+const sameSite = ['lax', 'strict', 'none'].includes(String(process.env.COOKIE_SAME_SITE || '').toLowerCase()) ? String(process.env.COOKIE_SAME_SITE).toLowerCase() : 'none';
 
-const getJwtRefreshSecret = () => {
-    if (!process.env.JWT_REFRESH_SECRET) throw new Error('JWT_REFRESH_SECRET is not configured');
-    return process.env.JWT_REFRESH_SECRET;
-};
+const generateToken = id => jwt.sign({ id, tokenType: 'access' }, getJwtSecret(), { expiresIn: process.env.JWT_EXPIRE || `${JWT_EXPIRE_DAYS}d` });
+const generateRefreshToken = id => jwt.sign({ id, tokenType: 'refresh' }, getJwtRefreshSecret(), { expiresIn: process.env.JWT_REFRESH_EXPIRE || `${JWT_REFRESH_EXPIRE_DAYS}d` });
 
-const normalizeSameSite = (value) => {
-    const normalized = String(value || '').toLowerCase();
-    if (['lax', 'strict', 'none'].includes(normalized)) return normalized;
-    return 'none';
-};
+const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? sameSite : 'Lax', maxAge: JWT_EXPIRE_DAYS * 86400000 };
+const refreshCookieOptions = { ...cookieOptions, maxAge: JWT_REFRESH_EXPIRE_DAYS * 86400000 };
+const clearTokenCookieOptions = (({ maxAge, ...c }) => c)(cookieOptions);
+const clearRefreshCookieOptions = (({ maxAge, ...c }) => c)(refreshCookieOptions);
 
-const PRODUCTION_COOKIE_SAME_SITE = normalizeSameSite(process.env.COOKIE_SAME_SITE || 'none');
-
-const generateToken = (id) => jwt.sign({ id, tokenType: 'access' }, getJwtSecret(), {
-    expiresIn: process.env.JWT_EXPIRE || `${JWT_EXPIRE_DAYS}d`
-});
-
-const generateRefreshToken = (id) => jwt.sign({ id, tokenType: 'refresh' }, getJwtRefreshSecret(), {
-    expiresIn: process.env.JWT_REFRESH_EXPIRE || `${JWT_REFRESH_EXPIRE_DAYS}d`
-});
-
-const cookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? PRODUCTION_COOKIE_SAME_SITE : 'Lax',
-    maxAge: JWT_EXPIRE_DAYS * 24 * 60 * 60 * 1000
-};
-
-const refreshCookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? PRODUCTION_COOKIE_SAME_SITE : 'Lax',
-    maxAge: JWT_REFRESH_EXPIRE_DAYS * 24 * 60 * 60 * 1000
-};
-
-const getClearCookieOptions = (options) => {
-    const { maxAge, ...clearOptions } = options;
-    return clearOptions;
-};
-
-const clearTokenCookieOptions = getClearCookieOptions(cookieOptions);
-const clearRefreshCookieOptions = getClearCookieOptions(refreshCookieOptions);
-
-const generateTwoFactorOtp = () => String(Math.floor(100000 + Math.random() * 900000));
-const hashTwoFactorOtp = (otp) => crypto.createHash('sha256').update(String(otp)).digest('hex');
+const hashTwoFactorOtp = otp => crypto.createHash('sha256').update(String(otp)).digest('hex');
 
 const initiateTwoFactorLogin = async (user, req, res, sendLoginOtpEmail) => {
-    const otpCode = generateTwoFactorOtp();
-    user.security = user.security || {};
-    user.security.twoFactorOtpHash = hashTwoFactorOtp(otpCode);
-    user.security.twoFactorOtpExpires = new Date(Date.now() + TWO_FACTOR_OTP_TTL_MS);
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    user.security = { ...(user.security || {}), twoFactorOtpHash: hashTwoFactorOtp(otpCode), twoFactorOtpExpires: new Date(Date.now() + 600000) };
     await user.save({ validateBeforeSave: false });
 
-    const sent = await sendLoginOtpEmail(user.email, user.name, otpCode);
-    if (!sent) {
-        return res.status(503).json({
-            success: false,
-            error: 'Unable to send OTP email. Please verify SMTP configuration and try again.'
-        });
-    }
-
-    return res.status(202).json({
-        success: false,
-        requiresTwoFactor: true,
-        message: 'A 6-digit OTP has been sent to your registered email.'
-    });
+    if (!await sendLoginOtpEmail(user.email, user.name, otpCode)) return res.status(503).json({ success: false, error: 'Unable to send OTP email.' });
+    res.status(202).json({ success: false, requiresTwoFactor: true, message: 'A 6-digit OTP has been sent to your registered email.' });
 };
 
-const verifyTwoFactorOtp = (user, otp) => {
-    const otpHash = user?.security?.twoFactorOtpHash;
-    const otpExpiry = user?.security?.twoFactorOtpExpires;
-
-    if (!otpHash || !otpExpiry) return false;
-    if (new Date(otpExpiry).getTime() < Date.now()) return false;
-
-    return hashTwoFactorOtp(otp) === otpHash;
-};
+const verifyTwoFactorOtp = (user, otp) => user?.security?.twoFactorOtpHash && new Date(user.security.twoFactorOtpExpires) >= new Date() && hashTwoFactorOtp(otp) === user.security.twoFactorOtpHash;
 
 const appendLoginHistoryEntry = (user, req) => {
-    const forwardedHeader = req.headers['x-forwarded-for'];
-    const forwardedIp = Array.isArray(forwardedHeader)
-        ? forwardedHeader[0]
-        : (typeof forwardedHeader === 'string' ? forwardedHeader.split(',')[0] : null);
-    const ip = (forwardedIp || req.ip || req.socket?.remoteAddress || '').trim() || 'Unknown';
-    const userAgent = req.headers['user-agent'] || 'Unknown Browser';
-
+    const ip = (String(req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || req.socket?.remoteAddress || 'Unknown').trim();
     user.clientData = user.clientData || {};
-    const existingHistory = Array.isArray(user.clientData.loginHistory) ? user.clientData.loginHistory : [];
-    const nextHistory = [
-        ...existingHistory,
-        {
-            timestamp: new Date(),
-            ip,
-            device: userAgent,
-            status: 'SUCCESS'
-        }
-    ];
-
-    user.clientData.loginHistory = nextHistory.slice(-LOGIN_HISTORY_LIMIT);
+    const hist = Array.isArray(user.clientData.loginHistory) ? user.clientData.loginHistory : [];
+    user.clientData.loginHistory = [...hist, { timestamp: new Date(), ip, device: req.headers['user-agent'] || 'Unknown', status: 'SUCCESS' }].slice(-10);
 };
 
-const setAuthCookies = (res, token, refreshToken) => {
-    res.cookie('token', token, cookieOptions);
-    res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+const setAuthCookies = (res, token, refreshToken) => { res.cookie('token', token, cookieOptions); res.cookie('refreshToken', refreshToken, refreshCookieOptions); };
+
+const buildAuthenticatedUserResponse = u => ({ _id: u._id, name: u.name, email: u.email, phone: u.phone, role: u.role, balance: u.balance, accountNumber: u.accountNumber, bankDetails: u.bankDetails, profile: u.profile, kyc: u.kyc, preferences: u.preferences, createdAt: u.createdAt, firstLogin: u.firstLogin });
+
+const redis = require('../config/redis');
+
+const blacklistToken = async (token, ttlSeconds = JWT_EXPIRE_DAYS * 86400) => {
+    if (!token) return;
+    try {
+        await redis.set(`bank:token:blacklist:${token}`, '1', { ex: ttlSeconds });
+    } catch {
+        // no-op
+    }
 };
 
-const buildAuthenticatedUserResponse = (user) => ({
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    phone: user.phone,
-    role: user.role,
-    balance: user.balance,
-    accountNumber: user.accountNumber,
-    bankDetails: user.bankDetails,
-    profile: user.profile,
-    kyc: user.kyc,
-    preferences: user.preferences,
-    createdAt: user.createdAt,
-    firstLogin: user.firstLogin
-});
-
-module.exports = {
-    generateToken,
-    generateRefreshToken,
-    getJwtRefreshSecret,
-    cookieOptions,
-    clearTokenCookieOptions,
-    clearRefreshCookieOptions,
-    initiateTwoFactorLogin,
-    verifyTwoFactorOtp,
-    appendLoginHistoryEntry,
-    setAuthCookies,
-    buildAuthenticatedUserResponse
+const isTokenBlacklisted = async (token) => {
+    if (!token) return false;
+    try {
+        const result = await redis.get(`bank:token:blacklist:${token}`);
+        return result === '1';
+    } catch {
+        return false;
+    }
 };
+
+module.exports = { generateToken, generateRefreshToken, getJwtRefreshSecret, cookieOptions, clearTokenCookieOptions, clearRefreshCookieOptions, initiateTwoFactorLogin, verifyTwoFactorOtp, appendLoginHistoryEntry, setAuthCookies, buildAuthenticatedUserResponse, blacklistToken, isTokenBlacklisted };

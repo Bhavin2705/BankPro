@@ -5,7 +5,7 @@ export const getClientData = async () => {
         const res = await api.userData.getClientData();
         return res.success ? res.data : {};
     } catch (error) {
-        console.error('Failed to fetch client data:', error);
+        
         return {};
     }
 };
@@ -15,7 +15,7 @@ export const setClientData = async (data) => {
         const res = await api.userData.updateClientData(data);
         return res.success ? res.data : null;
     } catch (error) {
-        console.error('Failed to update client data:', error);
+        
         throw error;
     }
 };

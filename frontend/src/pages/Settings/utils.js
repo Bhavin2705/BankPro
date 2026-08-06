@@ -34,8 +34,3 @@ export const getInitialPreferencesData = (user) => ({
   }
 });
 
-export const getInitialPasswordData = () => ({
-  currentPassword: '',
-  newPassword: '',
-  confirmPassword: ''
-});

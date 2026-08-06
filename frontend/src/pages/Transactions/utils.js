@@ -1,14 +1,3 @@
-export const formatTransactionDate = (value) => {
-  if (!value) return '-';
-  return new Date(value).toLocaleString('en-IN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
 export const getVisibleTransactions = (transactions, activeTab) => {
   return transactions
     .filter((tx) => {

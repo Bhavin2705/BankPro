@@ -1,4 +1,6 @@
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Shield } from 'lucide-react';
+import '../../styles/pages/ResetPassword.css';
+import '../../styles/pages/Login.css';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../utils/api';
@@ -116,7 +118,7 @@ const ResetPassword = ({ resetToken, email, onBack, onSuccess }) => {
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-blue-50 to-indigo-50">
       <div
-        className="hidden-mobile lg:w-1/2 auth-hero-gradient flex-col justify-between p-12 text-white"
+        className="hidden-mobile lg:w-1/2 auth-hero-panel auth-hero-gradient flex-col justify-between p-12 text-white"
       >
         <div className="flex items-center space-x-2">
           <h1 className="text-2xl font-bold">BankPro</h1>

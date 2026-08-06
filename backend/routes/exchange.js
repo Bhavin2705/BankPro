@@ -1,147 +1,62 @@
 const express = require('express');
 const axios = require('axios');
+const redis = require('../config/redis');
 const { apiLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
-
-let cachedRates = null;
-let cachedAt = 0;
-const CACHE_TTL_MS = parseInt(process.env.EXCHANGE_CACHE_TTL_MS) || 60000;
-
-let lastLiveRates = null;
-
-// USD-based fallback rates used when upstream key is missing/unavailable.
-const FALLBACK_RATES = Object.freeze({
-    USD: 1,
-    EUR: 0.92,
-    GBP: 0.79,
-    JPY: 148.7,
-    CAD: 1.35,
-    AUD: 1.52,
-    CHF: 0.89,
-    CNY: 7.23,
-    INR: 83.1,
-    BRL: 4.98
-});
-
-let hasWarnedMissingExchangeKey = false;
-
-const getExchangeApiUrl = () => {
-    const appId = String(process.env.OPEN_EXCHANGE_RATES_API_KEY || '').trim();
-    if (!appId) return null;
-    return `https://openexchangerates.org/api/latest.json?app_id=${appId}`;
-};
+const REDIS_EXCHANGE_KEY = 'bank:exchange:rates';
+const CACHE_TTL_SEC = Math.max(5, Math.floor((parseInt(process.env.EXCHANGE_CACHE_TTL_MS, 10) || 60000) / 1000));
+const FALLBACK_RATES = Object.freeze({ USD: 1, EUR: 0.92, GBP: 0.79, JPY: 148.7, CAD: 1.35, AUD: 1.52, CHF: 0.89, CNY: 7.23, INR: 83.1, BRL: 4.98 });
 
 const fetchRates = async () => {
     const now = Date.now();
-    if (cachedRates && now - cachedAt < CACHE_TTL_MS) {
-        return { success: true, source: 'cache', timestamp: cachedAt, rates: cachedRates };
+    const redisCache = await redis.cacheGetJson(REDIS_EXCHANGE_KEY);
+    if (redisCache && redisCache.rates) {
+        return { success: true, source: 'redis-cache', timestamp: redisCache.timestamp, rates: redisCache.rates };
     }
 
-    const exchangeApiUrl = getExchangeApiUrl();
-    if (!exchangeApiUrl) {
-        if (!hasWarnedMissingExchangeKey) {
-            console.warn('OPEN_EXCHANGE_RATES_API_KEY is not set. Using fallback exchange rates.');
-            hasWarnedMissingExchangeKey = true;
-        }
-        return {
-            success: true,
-            source: 'fallback-static',
-            timestamp: now,
-            rates: FALLBACK_RATES
-        };
-    }
+    const appId = String(process.env.OPEN_EXCHANGE_RATES_API_KEY || '').trim();
+    if (!appId) return { success: true, source: 'fallback-static', timestamp: now, rates: FALLBACK_RATES };
 
     try {
-        const response = await axios.get(exchangeApiUrl, { timeout: 10000 });
-        const data = response.data;
-
-        if (!data || !data.rates) {
-            throw new Error('Invalid upstream response');
-        }
-
-        cachedRates = data.rates;
-        cachedAt = Date.now();
-        lastLiveRates = cachedRates;
-        return { success: true, source: 'upstream', timestamp: cachedAt, rates: cachedRates };
-    } catch (err) {
-        if (lastLiveRates) {
-            return { success: true, source: 'last-live', timestamp: cachedAt, rates: lastLiveRates };
-        }
-        return {
-            success: true,
-            source: 'fallback-static',
-            timestamp: now,
-            rates: FALLBACK_RATES
-        };
+        const res = await axios.get(`https://openexchangerates.org/api/latest.json?app_id=${appId}`, { timeout: 10000 });
+        if (!res.data?.rates) throw new Error('Invalid response');
+        const rates = res.data.rates;
+        await redis.cacheSetJson(REDIS_EXCHANGE_KEY, { rates, timestamp: now }, CACHE_TTL_SEC);
+        return { success: true, source: 'upstream', timestamp: now, rates };
+    } catch {
+        return { success: true, source: 'fallback-static', timestamp: now, rates: FALLBACK_RATES };
     }
 };
 
-router.get('/rates', apiLimiter, async (req, res) => {
-    const result = await fetchRates();
-    if (!result.success) {
-        return res.status(502).json({
-            success: false,
-            error: result.error
-        });
-    }
-
-    return res.json(result);
-});
+router.get('/rates', apiLimiter, async (req, res) => res.json(await fetchRates()));
 
 router.post('/convert', apiLimiter, async (req, res) => {
+    // Destructure ONLY the three permitted fields — any client-supplied exchangeRate, fee,
+    // rate, convertedAmount etc. are completely ignored. Rate is always fetched server-side.
     const { amount, from, to } = req.body || {};
-    const numericAmount = Number(amount);
-    const fromCurrency = typeof from === 'string' ? from.toUpperCase() : '';
-    const toCurrency = typeof to === 'string' ? to.toUpperCase() : '';
+    const amt = Number(amount);
+    const fromC = String(from || '').toUpperCase().trim();
+    const toC = String(to || '').toUpperCase().trim();
 
-    if (!Number.isFinite(numericAmount) || numericAmount < 0) {
-        return res.status(400).json({ success: false, error: 'Invalid amount' });
-    }
+    if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ success: false, error: 'Amount must be a positive number' });
+    if (amt > 10_000_000) return res.status(400).json({ success: false, error: 'Amount exceeds maximum allowed conversion limit' });
+    if (!fromC || !toC) return res.status(400).json({ success: false, error: 'Invalid payload: from and to currency codes are required' });
+    if (fromC === toC) return res.status(200).json({ success: true, data: { amount: amt, from: fromC, to: toC, convertedAmount: amt, rate: 1 } });
 
-    if (!fromCurrency || !toCurrency) {
-        return res.status(400).json({ success: false, error: 'Both source and target currency are required' });
-    }
-
-    if (fromCurrency === toCurrency) {
-        return res.status(200).json({
-            success: true,
-            data: {
-                amount: numericAmount,
-                from: fromCurrency,
-                to: toCurrency,
-                convertedAmount: numericAmount,
-                rate: 1
-            }
-        });
-    }
-
+    // Rate fetched exclusively server-side — client cannot influence this value
     const result = await fetchRates();
-    if (!result.success) {
-        return res.status(502).json({ success: false, error: result.error });
-    }
+    const fromRate = result.rates[fromC], toRate = result.rates[toC];
+    if (!fromRate || !toRate) return res.status(400).json({ success: false, error: 'Unsupported currency code' });
 
-    const fromRate = result.rates[fromCurrency];
-    const toRate = result.rates[toCurrency];
-    if (!fromRate || !toRate) {
-        return res.status(400).json({ success: false, error: 'Unsupported currency code' });
-    }
+    const serverRate = toRate / fromRate;
+    const convertedAmount = (amt / fromRate) * toRate;
 
-    const amountInUsd = numericAmount / fromRate;
-    const convertedAmount = amountInUsd * toRate;
-    const rate = toRate / fromRate;
-
-    return res.status(200).json({
+    res.status(200).json({
         success: true,
         source: result.source,
         timestamp: result.timestamp,
-        data: {
-            amount: numericAmount,
-            from: fromCurrency,
-            to: toCurrency,
-            convertedAmount,
-            rate
-        }
+        data: { amount: amt, from: fromC, to: toC, convertedAmount, rate: serverRate }
     });
 });
 

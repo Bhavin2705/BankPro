@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { AlertCircle, CheckCircle, Info, X, XCircle } from 'lucide-react';
+import '../../styles/pages/NotificationProvider.css';
 import { createContext, useCallback, useContext, useState } from 'react';
 
 const NotificationContext = createContext(null);

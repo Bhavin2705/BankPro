@@ -1,298 +1,207 @@
 const Bill = require('../models/Bill');
 const Transaction = require('../models/Transaction');
-const User = require('../models/User');
-const emailNotifier = require('../services/email/notifier');
+const emailService = require('../services/email');
 const { createInAppNotification } = require('../utils/notifications');
-
-const ensureAuthenticatedUser = (req, res) => {
-  if (!req.user || !req.user._id) {
-    res.status(401).json({ success: false, message: 'User not authenticated' });
-    return false;
-  }
-  return true;
-};
-
-const findOwnedBill = (req, billId) => Bill.findOne({ _id: billId, userId: req.user._id });
+const { roundTwo } = require('../helpers/transaction.helpers');
+const asyncHandler = require('../utils/asyncHandler');
 
 const getBills = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
-    const status = req.query.status;
-
-    let query = { userId: req.user._id };
-    if (status) {
-      query.status = status;
-    }
-
-    const bills = await Bill.find(query)
-      .sort({ dueDate: 1 })
-      .skip(skip)
-      .limit(limit);
-
+    const query = { userId: req.user._id, ...(req.query.status && { status: req.query.status }) };
+    const bills = await Bill.find(query).sort({ dueDate: 1 }).skip(skip).limit(limit);
     const total = await Bill.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      data: bills,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    });
-  } catch (err) {
-    console.error('Error fetching bills:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
+    res.status(200).json({ success: true, data: bills, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
 };
 
 const getBill = async (req, res) => {
-  try {
-    const bill = await Bill.findOne({
-      _id: req.params.id,
-      userId: req.user._id
-    });
-
+    const bill = await Bill.findOne({ _id: req.params.id, userId: req.user._id });
     if (!bill) {
-      return res.status(404).json({ success: false, message: 'Bill not found' });
+        const error = new Error('Bill not found');
+        error.statusCode = 404;
+        throw error;
     }
-
     res.status(200).json({ success: true, data: bill });
-  } catch (err) {
-    console.error('Error fetching bill:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
 };
 
 const createBill = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-
-    if (!req.body.name || req.body.name.trim() === '') {
-      return res.status(400).json({ success: false, message: 'Bill name is required' });
+    const { name, amount, category, type, description, billNumber, accountNumber, dueDate, status } = req.body;
+    if (!name?.trim()) {
+        const error = new Error('Bill name is required');
+        error.statusCode = 400;
+        throw error;
     }
-    if (!req.body.amount || req.body.amount <= 0) {
-      return res.status(400).json({ success: false, message: 'Valid amount is required' });
+    const numericAmount = roundTwo(Number(amount));
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+        const error = new Error('Valid positive amount is required');
+        error.statusCode = 400;
+        throw error;
     }
 
-    const categoryTypeMap = {
-      utilities: 'electricity',
-      electricity: 'electricity',
-      water: 'water',
-      gas: 'gas',
-      internet: 'internet',
-      phone: 'phone',
-      cable_tv: 'cable_tv',
-      insurance: 'insurance',
-      loan: 'loan',
-      credit_card: 'credit_card',
-      rent: 'rent',
-      property_tax: 'property_tax',
-      vehicle: 'vehicle',
-      medical: 'medical',
-      education: 'education',
-      other: 'other'
-    };
-
-    const billType = categoryTypeMap[req.body.category] || categoryTypeMap[req.body.type] || 'other';
-
-    const billData = {
-      userId: req.user._id,
-      type: billType,
-      name: req.body.name.trim(),
-      description: req.body.description || '',
-      billNumber: req.body.billNumber || `BILL-${Date.now()}`,
-      accountNumber: req.body.accountNumber || req.user._id.toString().slice(-8),
-      amount: req.body.amount,
-      dueDate: req.body.dueDate || new Date(),
-      status: req.body.status || 'pending'
-    };
-
-    const bill = await Bill.create(billData);
-
+    const bill = await Bill.create({
+        userId: req.user._id,
+        type: category || type || 'other',
+        name: name.trim(),
+        description: description || '',
+        billNumber: billNumber || `BILL-${Date.now()}`,
+        accountNumber: accountNumber || req.user._id.toString().slice(-8),
+        amount: numericAmount,
+        dueDate: dueDate || new Date(),
+        status: 'pending'   // always pending on create — never trust client-supplied status
+    });
     res.status(201).json({ success: true, data: bill });
-  } catch (err) {
-    console.error('Error creating bill:', err);
-    res.status(400).json({ success: false, message: 'Failed to create bill' });
-  }
 };
 
 const updateBill = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-    let bill = await findOwnedBill(req, req.params.id);
-
+    const { name, dueDate, category, type, amount, description, status } = req.body;
+    const cleanBody = {};
+    if (name !== undefined) cleanBody.name = name;
+    if (dueDate !== undefined) cleanBody.dueDate = dueDate;
+    if (category !== undefined) cleanBody.type = category;
+    if (type !== undefined) cleanBody.type = type;
+    if (amount !== undefined) cleanBody.amount = roundTwo(Number(amount));
+    if (description !== undefined) cleanBody.description = description;
+    if (status !== undefined && ['pending', 'overdue', 'cancelled'].includes(status)) cleanBody.status = status;
+    const bill = await Bill.findOneAndUpdate({ _id: req.params.id, userId: req.user._id }, cleanBody, { new: true, runValidators: true });
     if (!bill) {
-      return res.status(404).json({ success: false, message: 'Bill not found' });
+        const error = new Error('Bill not found');
+        error.statusCode = 404;
+        throw error;
     }
-
-    Object.assign(bill, req.body);
-    bill = await bill.save();
-
     res.status(200).json({ success: true, data: bill });
-  } catch (err) {
-    console.error('Error updating bill:', err);
-    res.status(400).json({ success: false, message: 'Failed to update bill' });
-  }
 };
 
 const deleteBill = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-
-    const bill = await Bill.findOneAndDelete({
-      _id: req.params.id,
-      userId: req.user._id
-    });
-
+    const bill = await Bill.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
     if (!bill) {
-      return res.status(404).json({ success: false, message: 'Bill not found' });
+        const error = new Error('Bill not found');
+        error.statusCode = 404;
+        throw error;
     }
-
     res.status(200).json({ success: true, message: 'Bill deleted successfully' });
-  } catch (err) {
-    console.error('Error deleting bill:', err);
-    res.status(500).json({ success: false, message: 'Failed to delete bill' });
-  }
 };
 
 const payBill = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-    const bill = await findOwnedBill(req, req.params.id);
-
+    const bill = await Bill.findOne({ _id: req.params.id, userId: req.user._id });
     if (!bill) {
-      return res.status(404).json({ success: false, message: 'Bill not found' });
+        const error = new Error('Bill not found');
+        error.statusCode = 404;
+        throw error;
     }
-
     if (bill.status === 'paid') {
-      return res.status(400).json({ success: false, message: 'Bill already paid' });
+        const error = new Error('Bill already paid');
+        error.statusCode = 400;
+        throw error;
     }
 
-    const paymentAmount = req.body.amount || bill.amount;
-
-    if (paymentAmount < 0) {
-      return res.status(400).json({ success: false, message: 'Payment amount must be positive' });
+    const paymentAmount = roundTwo(Number(req.body.amount || bill.amount));
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+        const error = new Error('Payment amount must be positive');
+        error.statusCode = 400;
+        throw error;
     }
 
-    if (paymentAmount > req.user.balance) {
-      return res.status(400).json({ success: false, message: 'Insufficient balance for bill payment' });
+    // Re-fetch user fresh from DB to avoid stale balance
+    const User = require('../models/User');
+    const freshUser = await User.findById(req.user._id);
+    if (!freshUser) {
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
+    }
+    if (paymentAmount > freshUser.balance) {
+        const error = new Error('Insufficient balance for bill payment');
+        error.statusCode = 400;
+        throw error;
     }
 
+    const newBalance = roundTwo(freshUser.balance - paymentAmount);
     const reference = `BILLPAY-${bill._id}-${Date.now()}`;
 
-    const transaction = await Transaction.create({
-      userId: req.user._id,
-      type: 'debit',
-      amount: paymentAmount,
-      balance: req.user.balance - paymentAmount,
-      description: `Payment for ${bill.name}`,
-      category: 'bill_payment',
-      status: 'completed',
-      billId: bill._id,
-      reference: reference
-    });
-
+    // Lock the bill as paid FIRST — if anything after this fails the bill stays paid
+    // and the user gets an error they can report, rather than being double-charged.
     bill.status = 'paid';
-    bill.paidAmount = (bill.paidAmount || 0) + paymentAmount;
+    bill.paidAmount = roundTwo((bill.paidAmount || 0) + paymentAmount);
     bill.paidDate = new Date();
-    bill.transactionId = transaction._id;
     await bill.save();
 
-    req.user.balance -= paymentAmount;
-    await req.user.save();
+    let transaction;
+    try {
+        transaction = await Transaction.create({
+            userId: freshUser._id,
+            type: 'debit',
+            amount: paymentAmount,
+            balance: newBalance,
+            description: `Payment for ${bill.name}`,
+            category: 'bill_payment',
+            status: 'completed',
+            billId: bill._id,
+            reference
+        });
+    } catch (txErr) {
+        // Transaction write failed — roll bill back to pending so user can retry
+        bill.status = 'pending';
+        bill.paidAmount = roundTwo((bill.paidAmount || 0) - paymentAmount);
+        bill.paidDate = undefined;
+        await bill.save().catch(() => {});
+        const error = new Error('Payment ledger entry failed. Please try again.');
+        error.statusCode = 500;
+        throw error;
+    }
 
-    const billDetails = {
-      billName: bill.name,
-      amount: paymentAmount,
-      currency: 'INR',
-      referenceNumber: reference,
-      date: new Date()
-    };
+    // Wire transaction id onto bill record
+    bill.transactionId = transaction._id;
+    await bill.save().catch(() => {});
 
-    if (req.user?.preferences?.notifications?.email !== false) {
-      emailNotifier.sendBillPaymentNotification(req.user.email, billDetails);
+    freshUser.balance = newBalance;
+    await freshUser.save({ validateBeforeSave: false });
+
+    if (freshUser?.preferences?.notifications?.email !== false) {
+        emailService.sendBillPaymentNotification(freshUser.email, {
+            billName: bill.name,
+            amount: paymentAmount,
+            currency: 'INR',
+            referenceNumber: reference,
+            date: new Date()
+        });
     }
 
     await createInAppNotification({
-      userId: req.user._id,
-      type: 'bill_paid',
-      title: 'Bill Paid Successfully',
-      message: `${bill.name} bill paid for Rs ${paymentAmount.toLocaleString('en-IN')}.`,
-      priority: 'medium',
-      relatedId: bill._id,
-      relatedModel: 'Bill',
-      metadata: {
-        amount: paymentAmount,
-        category: 'bill_payment'
-      }
+        userId: freshUser._id,
+        type: 'bill_paid',
+        title: 'Bill Paid Successfully',
+        message: `${bill.name} bill paid for Rs ${paymentAmount.toLocaleString('en-IN')}.`,
+        priority: 'medium',
+        relatedId: bill._id,
+        relatedModel: 'Bill',
+        metadata: { amount: paymentAmount, category: 'bill_payment' }
     });
 
-    res.status(200).json({
-      success: true,
-      message: 'Bill paid successfully',
-      data: {
-        bill,
-        transaction
-      }
-    });
-  } catch (err) {
-    console.error('Error paying bill:', err);
-    res.status(400).json({ success: false, message: 'Failed to pay bill' });
-  }
+    res.status(200).json({ success: true, message: 'Bill paid successfully', data: { bill, transaction } });
 };
 
 const getBillStats = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-
-    const stats = await Bill.aggregate([
-      { $match: { userId: req.user._id } },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          totalAmount: { $sum: '$amount' }
-        }
-      }
+    const [totalBills, pendingBills, paidBills, overdueBills, stats] = await Promise.all([
+        Bill.countDocuments({ userId: req.user._id }),
+        Bill.countDocuments({ userId: req.user._id, status: 'pending' }),
+        Bill.countDocuments({ userId: req.user._id, status: 'paid' }),
+        Bill.countDocuments({ userId: req.user._id, status: 'overdue', dueDate: { $lt: new Date() } }),
+        Bill.aggregate([
+            { $match: { userId: req.user._id } },
+            { $group: { _id: '$status', count: { $sum: 1 }, totalAmount: { $sum: '$amount' } } }
+        ])
     ]);
 
-    const totalBills = await Bill.countDocuments({ userId: req.user._id });
-    const pendingBills = await Bill.countDocuments({ userId: req.user._id, status: 'pending' });
-    const paidBills = await Bill.countDocuments({ userId: req.user._id, status: 'paid' });
-    const overdueBills = await Bill.countDocuments({
-      userId: req.user._id,
-      status: 'overdue',
-      dueDate: { $lt: new Date() }
-    });
-
-    res.status(200).json({
-      success: true,
-      data: {
-        totalBills,
-        pendingBills,
-        paidBills,
-        overdueBills,
-        statsByStatus: stats
-      }
-    });
-  } catch (err) {
-    console.error('Error fetching bill stats:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
+    res.status(200).json({ success: true, data: { totalBills, pendingBills, paidBills, overdueBills, statsByStatus: stats } });
 };
 
 module.exports = {
-  getBills,
-  getBill,
-  createBill,
-  updateBill,
-  deleteBill,
-  payBill,
-  getBillStats
+    getBills: asyncHandler(getBills),
+    getBill: asyncHandler(getBill),
+    createBill: asyncHandler(createBill),
+    updateBill: asyncHandler(updateBill),
+    deleteBill: asyncHandler(deleteBill),
+    payBill: asyncHandler(payBill),
+    getBillStats: asyncHandler(getBillStats)
 };

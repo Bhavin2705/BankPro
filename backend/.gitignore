@@ -1,37 +1,19 @@
-# Node.js dependencies
 node_modules/
-
-# Logs
-logs
+logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Environment variables
 .env
+.env.*
+!.env.example
 config/environments/*.env
 !config/environments/test.env
-
-# Build output
 dist/
-
-# IDE files
+coverage/
+uploads/*
+!uploads/.gitkeep
+uploads/profile/*
+!uploads/profile/.gitkeep
 .vscode/
 .idea/
-
-# OS files
 .DS_Store
 Thumbs.db
-
-# Temporary files
-*.tmp
-*.temp
-
-# Coverage
-coverage/
 tests/.jest-server-state.json
-
-*.txt
-*.md
-*.test

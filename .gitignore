@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Production & Build outputs
+dist/
+build/
+.vite/
+.vite-cache/
+
+# Environment & Secret files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+frontend/.env
+
+# IDE & Tooling
+.vscode/
+.idea/
+.claude/
+.gemini/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Uploads & Temp files
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/uploads/profile/*
+!backend/uploads/profile/.gitkeep
+*.tmp
+*.temp
+bank-management-system.zip

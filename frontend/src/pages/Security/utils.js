@@ -57,8 +57,8 @@ export const validatePinForm = ({ selectedCardId, cards, pinForm }) => {
     return 'The selected card is not active. Activate the card before changing its PIN.';
   }
 
-  if (!/^\d{4}$/.test(pinForm.newPin)) {
-    return 'PIN must be 4 digits';
+  if (!/^\d{4,6}$/.test(pinForm.newPin)) {
+    return 'PIN must be 4 to 6 digits';
   }
 
   if (pinForm.newPin !== pinForm.confirmPin) {
@@ -69,12 +69,12 @@ export const validatePinForm = ({ selectedCardId, cards, pinForm }) => {
 };
 
 export const validateAccountPinForm = (accountPinForm) => {
-  if (!/^\d{4}$/.test(accountPinForm.currentPin)) {
-    return 'Current account PIN must be 4 digits';
+  if (!/^\d{4,6}$/.test(accountPinForm.currentPin)) {
+    return 'Current account PIN must be 4 to 6 digits';
   }
 
-  if (!/^\d{4}$/.test(accountPinForm.newPin)) {
-    return 'New account PIN must be 4 digits';
+  if (!/^\d{4,6}$/.test(accountPinForm.newPin)) {
+    return 'New account PIN must be 4 to 6 digits';
   }
 
   if (accountPinForm.newPin !== accountPinForm.confirmPin) {

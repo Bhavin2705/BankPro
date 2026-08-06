@@ -19,9 +19,20 @@
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   min-width: 0;
-  width: min(100%, 500px);
+  width: clamp(280px, 92vw, 480px);
   animation: slideInRight 0.3s ease-out;
   pointer-events: auto;
+}
+
+@media (max-width: 480px) {
+  .toast-notification-container {
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+  .toast-notification-item {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
 }
 
 .toast-notification-item-success {

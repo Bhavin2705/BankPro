@@ -1,11 +1,13 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clientData from '../../utils/clientData';
 import debounce from '../../utils/debounce';
 import { api } from '../../utils/api';
-import { DataStatus, LoadingState } from '../../shared/components/feedback';
+import DataStatus from '../../components/feedback/DataStatus';
+import LoadingState from '../../components/feedback/LoadingState';
 import { ConverterCard, KeyRates, PopularPairs } from './components';
 import { MIN_REFRESH_INTERVAL, popularCurrencies, popularPairs } from './constants';
 import { formatCurrency, getCurrencyInfo } from './utils';
+import '../../styles/pages/Currency.css';
 
 const CACHE_SECTION = 'exchangeCache';
 
@@ -19,6 +21,9 @@ const CurrencyExchangePage = () => {
   const [result, setResult] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshDisabled, setRefreshDisabled] = useState(false);
+  // isConverting: true while a rate-fetch is in-flight — blocks double-submit on the refresh path
+  const [isConverting, setIsConverting] = useState(false);
+  const isConvertingRef = useRef(false);
 
   const getCurrencyDetails = useCallback(
     (code) => getCurrencyInfo(code, popularCurrencies),
@@ -63,6 +68,9 @@ const CurrencyExchangePage = () => {
   }, []);
 
   const loadRates = useCallback(async (isRefresh = false) => {
+    if (isConvertingRef.current) return; // block concurrent fetches safely without infinite loops
+    isConvertingRef.current = true;
+    setIsConverting(true);
     if (isRefresh) {
       setRefreshing(true);
     } else {
@@ -96,6 +104,8 @@ const CurrencyExchangePage = () => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      isConvertingRef.current = false;
+      setIsConverting(false);
     }
   }, [applyRates, fetchLiveRates, readCachedRates, useLiveData]);
 
@@ -156,13 +166,14 @@ const CurrencyExchangePage = () => {
   };
 
   const handleRefresh = () => {
-    if (refreshDisabled) return;
+    if (refreshDisabled || isConverting || isConvertingRef.current) return; // double-submit guard
     loadRates(true);
     setRefreshDisabled(true);
     setTimeout(() => setRefreshDisabled(false), MIN_REFRESH_INTERVAL);
   };
 
   const handleSwapCurrencies = () => {
+    if (isConverting || isConvertingRef.current) return; // block swap while rates are in-flight to prevent stale-rate execution
     setConversion((prev) => ({
       ...prev,
       fromCurrency: prev.toCurrency,
@@ -199,7 +210,7 @@ const CurrencyExchangePage = () => {
         useLiveData={useLiveData}
         result={result}
         refreshing={refreshing}
-        refreshDisabled={refreshDisabled}
+        refreshDisabled={refreshDisabled || isConverting}
         onToggleMode={handleToggleMode}
         onRefresh={handleRefresh}
         onSwapCurrencies={handleSwapCurrencies}

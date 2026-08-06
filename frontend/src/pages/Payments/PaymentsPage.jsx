@@ -1,6 +1,7 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { formatCurrencyByPreference } from '../../utils/currency';
 import api from '../../utils/api';
+import { addTransaction } from '../../utils/transactions';
 import BillsTab from './components/BillsTab';
 import RecurringTab from './components/RecurringTab';
 import {
@@ -8,27 +9,44 @@ import {
   frequencyMap,
   getFrequencyLabel,
   getMonthlyRecurringTotal,
-  initialBillFormData,
-  initialRecurringFormData,
 } from './constants';
-import { formatDate, getNextDueDate } from './utils';
+import { formatDate } from '../../utils/date';
+import { getNextDueDate } from './utils';
 import { useNotification } from '../../components/providers/NotificationProvider';
+import '../../styles/pages/Payments.css';
+
+const INITIAL_BILL_FORM_DATA = {
+  name: '',
+  amount: '',
+  dueDate: '',
+  category: 'utilities',
+};
+
+const INITIAL_RECURRING_FORM_DATA = {
+  recipientName: '',
+  recipientAccount: '',
+  recipientPhone: '',
+  amount: '',
+  frequency: 'monthly',
+  description: '',
+  startDate: '',
+};
 
 const Payments = ({ user, onUserUpdate }) => {
   const [activeTab, setActiveTab] = useState('bills');
 
-  const { showError: showBillError } = useNotification();
-  const { showError: showRecurringError, showSuccess: showRecurringSuccess } = useNotification();
+  const { showError: showBillError, showSuccess: showRecurringSuccess } = useNotification();
+  const showRecurringError = showBillError;
 
   const [bills, setBills] = useState([]);
   const [showBillForm, setShowBillForm] = useState(false);
-  const [billFormData, setBillFormData] = useState(initialBillFormData);
+  const [billFormData, setBillFormData] = useState(INITIAL_BILL_FORM_DATA);
   const [submittingBill, setSubmittingBill] = useState(false);
   const [billBalanceWarning, setBillBalanceWarning] = useState('');
 
   const [recurringPayments, setRecurringPayments] = useState([]);
   const [showRecurringForm, setShowRecurringForm] = useState(false);
-  const [recurringFormData, setRecurringFormData] = useState(initialRecurringFormData);
+  const [recurringFormData, setRecurringFormData] = useState(INITIAL_RECURRING_FORM_DATA);
   const [balanceWarning, setBalanceWarning] = useState('');
   const [submittingRecurring, setSubmittingRecurring] = useState(false);
   const [updatingRecurringId, setUpdatingRecurringId] = useState(null);
@@ -65,62 +83,66 @@ const Payments = ({ user, onUserUpdate }) => {
   const handleBillSubmit = async (e) => {
     e.preventDefault();
     if (submittingBill) return;
-
-    const amount = parseFloat(billFormData.amount);
-    if (amount <= 0) return;
-
-    if (!billFormData.dueDate) {
-      showBillError('Due date is required');
-      return;
-    }
-
-    if (amount > user.balance) {
-      showBillError('Insufficient balance for bill payment');
-      return;
-    }
-
-    const billPayload = {
-      name: billFormData.name,
-      type: billFormData.category,
-      amount,
-      dueDate: billFormData.dueDate,
-      billNumber: `BILL-${Date.now()}`,
-      accountNumber: user.accountNumber || 'N/A',
-      status: 'pending',
-      description: `Bill Payment: ${billFormData.name} (${billFormData.category})`
-    };
-
-    let billRes;
-    try {
-      setSubmittingBill(true);
-      billRes = await api.bills.create(billPayload);
-    } catch {
-      showBillError('Failed to create bill');
-      setSubmittingBill(false);
-      return;
-    }
+    // Lock immediately before any async work — prevents double-submit race
+    setSubmittingBill(true);
 
     try {
-      const payRes = await api.bills.pay(billRes?.data?._id, { amount });
-      if (!payRes?.success) {
-        throw new Error(payRes?.message || 'Bill payment failed');
+      const amount = parseFloat(billFormData.amount);
+      if (isNaN(amount) || amount <= 0) {
+        showBillError('Please enter a valid amount greater than 0');
+        return;
       }
-      const nextBalance = typeof payRes?.data?.transaction?.balance === 'number'
-        ? payRes.data.transaction.balance
-        : user.balance - amount;
-      onUserUpdate({ ...user, balance: nextBalance });
-      await loadBills();
-      setShowBillForm(false);
-      setBillFormData(initialBillFormData);
-      setBillBalanceWarning('');
-    } catch (err) {
-      console.error('Error processing bill payment:', err);
-      showBillError(err.message || 'Error processing bill payment');
-      if (billRes?.data?._id) {
-        try {
-          await api.bills.delete(billRes.data._id);
-        } catch (rollbackError) {
-          console.error('Error rolling back bill creation:', rollbackError);
+
+      if (!billFormData.dueDate) {
+        showBillError('Due date is required');
+        return;
+      }
+
+      if (amount > user.balance) {
+        showBillError('Insufficient balance for bill payment');
+        return;
+      }
+
+      // Do NOT send status — backend always creates bills as 'pending'
+      const billPayload = {
+        name: billFormData.name,
+        type: billFormData.category,
+        amount,
+        dueDate: billFormData.dueDate,
+        billNumber: `BILL-${Date.now()}`,
+        accountNumber: user.accountNumber || 'N/A',
+        description: `Bill Payment: ${billFormData.name} (${billFormData.category})`
+      };
+
+      let billRes;
+      try {
+        billRes = await api.bills.create(billPayload);
+      } catch {
+        showBillError('Failed to create bill');
+        return;
+      }
+
+      try {
+        const payRes = await api.bills.pay(billRes?.data?._id, { amount });
+        if (!payRes?.success) {
+          throw new Error(payRes?.message || 'Bill payment failed');
+        }
+        const nextBalance = typeof payRes?.data?.transaction?.balance === 'number'
+          ? payRes.data.transaction.balance
+          : user.balance - amount;
+        onUserUpdate({ ...user, balance: nextBalance });
+        await loadBills();
+        setShowBillForm(false);
+        setBillFormData(INITIAL_BILL_FORM_DATA);
+        setBillBalanceWarning('');
+      } catch (err) {
+        showBillError(err.message || 'Error processing bill payment');
+        if (billRes?.data?._id) {
+          try {
+            await api.bills.delete(billRes.data._id);
+          } catch {
+            // rollback best-effort
+          }
         }
       }
     } finally {
@@ -165,107 +187,98 @@ const Payments = ({ user, onUserUpdate }) => {
   const handleRecurringSubmit = async (e) => {
     e.preventDefault();
     if (submittingRecurring) return;
+    // Lock immediately — closes the double-submit window before any validation
+    setSubmittingRecurring(true);
 
-    const amount = parseFloat(recurringFormData.amount);
-    if (amount <= 0) {
-      showRecurringError('Amount must be greater than 0');
-      return;
-    }
-
-    if (!recurringFormData.startDate) {
-      showRecurringError('Start date is required');
-      return;
-    }
-
-    if (amount > getUserBalance()) {
-      showRecurringError('Insufficient balance for recurring payment');
-      return;
-    }
-
-    if (!recurringFormData.recipientName.trim()) {
-      showRecurringError('Recipient name is required');
-      return;
-    }
-
-    if (!recurringFormData.recipientAccount.trim() && !recurringFormData.recipientPhone.trim()) {
-      showRecurringError('Enter recipient account number or phone number');
-      return;
-    }
-
-    const { startDate, nextDueDate } = getNextDueDate(
-      recurringFormData.startDate,
-      recurringFormData.frequency,
-      frequencyMap,
-    );
-
-    const recurringPayload = {
-      name: recurringFormData.recipientName,
-      beneficiaryName: recurringFormData.recipientName,
-      toAccount: recurringFormData.recipientAccount || recurringFormData.recipientPhone,
-      fromAccount: user._id,
-      amount,
-      frequency: recurringFormData.frequency,
-      description: recurringFormData.description || 'Recurring payment',
-      type: 'other',
-      startDate,
-      nextDueDate,
-      status: 'active',
-    };
-
-    let createdRecurringId = null;
     try {
-      setSubmittingRecurring(true);
-      const recurringRes = await api.recurring.create(recurringPayload);
-      if (!recurringRes?.success || !recurringRes?.data?._id) {
-        showRecurringError('Failed to create recurring payment');
-        setSubmittingRecurring(false);
+      const amount = parseFloat(recurringFormData.amount);
+      if (isNaN(amount) || amount <= 0) {
+        showRecurringError('Amount must be greater than 0');
         return;
       }
-      createdRecurringId = recurringRes.data._id;
-    } catch {
-      showRecurringError('Failed to create recurring payment');
-      setSubmittingRecurring(false);
-      return;
-    }
+      if (!recurringFormData.startDate) {
+        showRecurringError('Start date is required');
+        return;
+      }
+      if (amount > getUserBalance()) {
+        showRecurringError('Insufficient balance for recurring payment');
+        return;
+      }
+      if (!recurringFormData.recipientName.trim()) {
+        showRecurringError('Recipient name is required');
+        return;
+      }
+      if (!recurringFormData.recipientAccount.trim() && !recurringFormData.recipientPhone.trim()) {
+        showRecurringError('Enter recipient account number or phone number');
+        return;
+      }
 
-    try {
-      const transactionResult = await addTransaction({
-        type: 'debit',
+      const { startDate, nextDueDate } = getNextDueDate(
+        recurringFormData.startDate,
+        recurringFormData.frequency,
+        frequencyMap,
+      );
+
+      const recurringPayload = {
+        name: recurringFormData.recipientName,
+        beneficiaryName: recurringFormData.recipientName,
+        toAccount: recurringFormData.recipientAccount || recurringFormData.recipientPhone,
+        fromAccount: user._id,
         amount,
-        description: `Recurring Payment: ${recurringFormData.recipientName}`,
-        category: 'bill_payment',
-        transferType: 'external',
-        recipientName: recurringFormData.recipientName,
-        recipientAccount: recurringFormData.recipientAccount || recurringFormData.recipientPhone,
-      });
-      if (!transactionResult) {
-        throw new Error('Transaction was not created');
-      }
-      const nextBalance = typeof transactionResult?.balance === 'number'
-        ? transactionResult.balance
-        : user.balance - amount;
-      onUserUpdate({ ...user, balance: nextBalance });
-      showRecurringSuccess('Recurring payment created successfully! First payment deducted from your account.');
-    } catch (err) {
-      console.error('Error creating transaction:', err);
-      if (createdRecurringId) {
-        try {
-          await api.recurring.delete(createdRecurringId);
-        } catch (rollbackError) {
-          console.error('Error rolling back recurring payment after transaction failure:', rollbackError);
-        }
-      }
-      showRecurringError('Recurring payment was not saved because first payment failed.');
-      setSubmittingRecurring(false);
-      return;
-    }
+        frequency: recurringFormData.frequency,
+        description: recurringFormData.description || 'Recurring payment',
+        type: 'other',
+        startDate,
+        nextDueDate,
+        status: 'active',
+      };
 
-    setRecurringFormData(initialRecurringFormData);
-    setBalanceWarning('');
-    setShowRecurringForm(false);
-    await loadRecurringPayments();
-    setSubmittingRecurring(false);
+      let createdRecurringId = null;
+      try {
+        const recurringRes = await api.recurring.create(recurringPayload);
+        if (!recurringRes?.success || !recurringRes?.data?._id) {
+          showRecurringError('Failed to create recurring payment');
+          return;
+        }
+        createdRecurringId = recurringRes.data._id;
+      } catch {
+        showRecurringError('Failed to create recurring payment');
+        return;
+      }
+
+      try {
+        const transactionResult = await addTransaction({
+          type: 'debit',
+          amount,
+          description: `Recurring Payment: ${recurringFormData.recipientName}`,
+          category: 'bill_payment',
+          transferType: 'external',
+          recipientName: recurringFormData.recipientName,
+          recipientAccount: recurringFormData.recipientAccount || recurringFormData.recipientPhone,
+        });
+        if (!transactionResult) throw new Error('Transaction was not created');
+        const nextBalance = typeof transactionResult?.balance === 'number'
+          ? transactionResult.balance
+          : user.balance - amount;
+        onUserUpdate({ ...user, balance: nextBalance });
+        showRecurringSuccess('Recurring payment created successfully! First payment deducted from your account.');
+      } catch (err) {
+        if (createdRecurringId) {
+          try { await api.recurring.delete(createdRecurringId); } catch { /* rollback best-effort */ }
+        }
+        showRecurringError('Recurring payment was not saved because first payment failed.');
+        return;
+      }
+
+      setRecurringFormData(INITIAL_RECURRING_FORM_DATA);
+      setBalanceWarning('');
+      setShowRecurringForm(false);
+      await loadRecurringPayments();
+    } finally {
+      setSubmittingRecurring(false);
+    }
   };
+
 
   const deleteRecurringPayment = async (paymentId) => {
     if (deletingRecurringId) return;

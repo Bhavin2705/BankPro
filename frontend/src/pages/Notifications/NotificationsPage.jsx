@@ -1,7 +1,8 @@
-﻿import { AlertTriangle, Bell, CheckCircle, CreditCard, ShieldAlert, ShoppingBag } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle, CreditCard, ShieldAlert, ShoppingBag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNotification } from '../../components/providers/NotificationProvider';
 import { api } from '../../utils/api';
+import '../../styles/pages/notifications.css';
 
 const isLikelyDummyNotification = (item) => {
   const text = `${item?.title || ''} ${item?.message || ''}`.toLowerCase();
@@ -12,6 +13,7 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
   const { showError } = useNotification();
 
   useEffect(() => {
@@ -32,7 +34,7 @@ const Notifications = () => {
           }));
         setNotifications(normalized);
       } catch (err) {
-        console.error('Notifications error:', err);
+        
         const errorMsg = 'Failed to load notifications. Please try again.';
         setError(errorMsg);
         showError(errorMsg);
@@ -44,22 +46,30 @@ const Notifications = () => {
   }, [showError]);
 
   const markAsRead = async (id) => {
+    if (isUpdating) return;
+    setIsUpdating(true);
     try {
       await api.notifications.markAsRead(id);
       setNotifications((prev) => prev.map((n) => (n.id === id || n._id === id ? { ...n, read: true } : n)));
     } catch (err) {
-      console.error('Error marking notification as read:', err);
+      
       showError('Failed to mark notification as read');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const markAllAsRead = async () => {
+    if (isUpdating) return;
+    setIsUpdating(true);
     try {
       await api.notifications.markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (err) {
-      console.error('Error marking all as read:', err);
+      
       showError('Failed to mark all as read');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -128,6 +138,7 @@ const Notifications = () => {
           <button
             className="notifications-mark-all-btn"
             onClick={markAllAsRead}
+            disabled={isUpdating}
           >
             Mark all as read
           </button>
@@ -170,6 +181,7 @@ const Notifications = () => {
                   <button
                     onClick={() => markAsRead(n.id || n._id)}
                     className="notifications-mark-read-btn"
+                    disabled={isUpdating}
                   >
                     Mark read
                   </button>

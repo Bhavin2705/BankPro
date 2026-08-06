@@ -2,32 +2,7 @@ const toNumber = (value) => (
   typeof value === 'number' && Number.isFinite(value) ? value : Number(value) || 0
 );
 
-const parseLocalDateString = (dateString) => {
-  if (typeof dateString !== 'string') return null;
-  if (dateString.length === 10) {
-    const parsed = new Date(`${dateString}T00:00:00`);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  const parsed = new Date(dateString);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
-export const parseTransactionDate = (transaction, fromLocalYYYYMMDD) => {
-  if (!transaction) return null;
-  if (transaction.createdAt) {
-    const parsed = new Date(transaction.createdAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  if (transaction.timestamp) {
-    const parsed = new Date(transaction.timestamp);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  if (transaction.date && typeof transaction.date === 'string' && transaction.date.length === 10 && fromLocalYYYYMMDD) {
-    const parsed = fromLocalYYYYMMDD(transaction.date);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  return parseLocalDateString(transaction.date);
-};
+import { parseTransactionDate } from '../../utils/date';
 
 export const buildMiniStatement = (transactions, user) => {
   if (!transactions.length) return null;

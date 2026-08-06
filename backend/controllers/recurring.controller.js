@@ -1,74 +1,43 @@
 const RecurringPayment = require('../models/RecurringPayment');
-
-const ensureAuthenticatedUser = (req, res) => {
-  if (!req.user || !req.user._id) {
-    res.status(401).json({ success: false, message: 'User not authenticated' });
-    return false;
-  }
-  return true;
-};
+const asyncHandler = require('../utils/asyncHandler');
 
 const getRecurringPayments = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-    const payments = await RecurringPayment.find({ userId: req.user._id });
-    res.json({ success: true, data: payments });
-  } catch (err) {
-    console.error('Error fetching recurring payments:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
+    const data = await RecurringPayment.find({ userId: req.user._id });
+    res.json({ success: true, data: data });
 };
 
 const createRecurringPayment = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-    const payment = await RecurringPayment.create({ ...req.body, userId: req.user._id });
-    res.status(201).json({ success: true, data: payment });
-  } catch (err) {
-    console.error('Error creating recurring payment:', err);
-    res.status(400).json({ success: false, message: 'Failed to create recurring payment' });
-  }
+    const { name, beneficiaryName, toAccount, fromAccount, amount, frequency, type, startDate, nextDueDate, description } = req.body;
+    const data = await RecurringPayment.create({ userId: req.user._id, name, beneficiaryName, toAccount, fromAccount, amount, frequency, type, startDate, nextDueDate, description });
+    res.status(201).json({ success: true, data: data });
 };
 
 const updateRecurringPayment = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
-    const payment = await RecurringPayment.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user._id },
-      req.body,
-      { new: true, runValidators: true }
-    );
-
+    const payment = await RecurringPayment.findOne({ _id: req.params.id, userId: req.user._id });
     if (!payment) {
-      return res.status(404).json({ success: false, message: 'Recurring payment not found' });
+        const error = new Error('Recurring payment not found');
+        error.statusCode = 404;
+        throw error;
     }
-
+    const allowed = ['name', 'beneficiaryName', 'toAccount', 'fromAccount', 'amount', 'frequency', 'type', 'startDate', 'nextDueDate', 'description'];
+    allowed.forEach(field => { if (req.body[field] !== undefined) payment[field] = req.body[field]; });
+    await payment.save();
     res.json({ success: true, data: payment });
-  } catch (err) {
-    console.error('Error updating recurring payment:', err);
-    res.status(400).json({ success: false, message: 'Failed to update recurring payment' });
-  }
 };
 
 const deleteRecurringPayment = async (req, res) => {
-  try {
-    if (!ensureAuthenticatedUser(req, res)) return;
     const payment = await RecurringPayment.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
-
     if (!payment) {
-      return res.status(404).json({ success: false, message: 'Recurring payment not found' });
+        const error = new Error('Recurring payment not found');
+        error.statusCode = 404;
+        throw error;
     }
-
     res.json({ success: true, data: payment });
-  } catch (err) {
-    console.error('Error deleting recurring payment:', err);
-    res.status(400).json({ success: false, message: 'Failed to delete recurring payment' });
-  }
 };
 
 module.exports = {
-  getRecurringPayments,
-  createRecurringPayment,
-  updateRecurringPayment,
-  deleteRecurringPayment
+    getRecurringPayments: asyncHandler(getRecurringPayments),
+    createRecurringPayment: asyncHandler(createRecurringPayment),
+    updateRecurringPayment: asyncHandler(updateRecurringPayment),
+    deleteRecurringPayment: asyncHandler(deleteRecurringPayment)
 };

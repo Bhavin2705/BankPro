@@ -36,17 +36,13 @@
 }
 
 .register-pin-strength-1 {
-  width: 25%;
+  width: 33%;
 }
 
 .register-pin-strength-2 {
-  width: 50%;
+  width: 66%;
 }
 
 .register-pin-strength-3 {
-  width: 75%;
-}
-
-.register-pin-strength-4 {
   width: 100%;
 }

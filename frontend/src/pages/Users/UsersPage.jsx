@@ -17,6 +17,7 @@ import api from '../../utils/api';
 import { getAllUsers } from '../../utils/auth';
 import { formatCurrencyByPreference } from '../../utils/currency';
 import { calculateTotalBalance, getBlockModalConfig } from './utils';
+import '../../styles/pages/Users.css';
 
 const STATUS_ORDER = { active: 0, suspended: 1, inactive: 2 };
 
@@ -56,7 +57,7 @@ const Users = ({ user }) => {
       setAdminStats(statsResponse?.success ? statsResponse.data : null);
       setBankMetrics(metricsResponse?.success ? metricsResponse.data : null);
     } catch (error) {
-      console.error('Error loading admin overview:', error);
+      
       setAdminStats(null);
       setBankMetrics(null);
     }
@@ -73,7 +74,7 @@ const Users = ({ user }) => {
         await loadUserDetails(defaultUser);
       }
     } catch (error) {
-      console.error('Error loading users:', error);
+      
       setUsers([]);
     }
   };
@@ -88,7 +89,7 @@ const Users = ({ user }) => {
       const transactionsResponse = await api.transactions.getByUserAdmin(listedUserId, { limit: 12 });
       setUserTransactions(transactionsResponse?.data || []);
     } catch (error) {
-      console.error('Error loading user details:', error);
+      
       setUserTransactions([]);
       toast.error('Failed to load selected user details');
     } finally {
@@ -231,7 +232,8 @@ const Users = ({ user }) => {
             </div>
           </div>
 
-          <div className="users-table-head" role="row">
+          <div className="users-table-container overflow-x-auto">
+            <div className="users-table-head" role="row">
             <span>User</span>
             <span>Role</span>
             <span>Status</span>
@@ -298,6 +300,7 @@ const Users = ({ user }) => {
                 );
               })
             )}
+          </div>
           </div>
         </section>
 

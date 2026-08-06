@@ -1,4 +1,4 @@
-﻿.budget-page {
+.budget-page {
   position: relative;
 }
 
@@ -162,6 +162,17 @@
   max-width: 400px;
   width: 100%;
   margin: 1rem;
+}
+
+.budget-modal-card input,
+.budget-modal-card select,
+.budget-modal-card textarea,
+.budget-modal-card .form-control,
+.budget-form-field,
+.budget-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .budget-modal-title {

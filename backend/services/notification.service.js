@@ -1,26 +1,13 @@
-const emailNotifier = require('./email/notifier');
+const emailService = require('./email');
 const { createInAppNotification } = require('../utils/notifications');
 
-const createNotification = async (payload) => {
-    const notification = await createInAppNotification(payload);
-    return !!notification;
-};
+const createNotification = async payload => Boolean(await createInAppNotification(payload));
 
 const sendTransactionEmailIfEnabled = ({ user, details }) => {
-    let emailSent = false;
-
     if (user?.preferences?.notifications?.email !== false) {
-        emailNotifier.sendTransactionNotification(user.email, details)
-            .then((sent) => {
-                emailSent = !!sent;
-            })
-            .catch(() => { });
+        emailService.sendTransactionNotification(user.email, details).catch(() => {});
     }
-
-    return emailSent;
+    return false;
 };
 
-module.exports = {
-    createNotification,
-    sendTransactionEmailIfEnabled
-};
+module.exports = { createNotification, sendTransactionEmailIfEnabled };

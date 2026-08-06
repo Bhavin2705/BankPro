@@ -1,8 +1,9 @@
-﻿import { Edit, Plus, Trash2 } from 'lucide-react';
+import { Edit, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../../utils/api';
 import { formatCurrencyByPreference } from '../../utils/currency';
 import { getTransactions } from '../../utils/transactions';
+import '../../styles/pages/Budget.css';
 
 const Budget = ({ user }) => {
   const [budgets, setBudgets] = useState([]);
@@ -33,7 +34,7 @@ const Budget = ({ user }) => {
         setBudgets(response.data || []);
       }
     } catch (err) {
-      console.error('Error loading budgets:', err);
+      
       setError('Failed to load budgets');
     } finally {
       setLoading(false);
@@ -45,7 +46,7 @@ const Budget = ({ user }) => {
       const userTransactions = await getTransactions({ fetchAll: true });
       setTransactions(userTransactions);
     } catch (loadError) {
-      console.error('Error loading transactions:', loadError);
+      
       setTransactions([]);
     }
   };
@@ -54,9 +55,17 @@ const Budget = ({ user }) => {
     { name: 'food', label: 'Food & Dining' },
     { name: 'transport', label: 'Transportation' },
     { name: 'entertainment', label: 'Entertainment' },
-    { name: 'utilities', label: 'Utilities' },
     { name: 'shopping', label: 'Shopping' },
-    { name: 'healthcare', label: 'Healthcare' }
+    { name: 'utilities', label: 'Utilities' },
+    { name: 'rent', label: 'Rent' },
+    { name: 'insurance', label: 'Insurance' },
+    { name: 'healthcare', label: 'Healthcare' },
+    { name: 'education', label: 'Education' },
+    { name: 'savings', label: 'Savings' },
+    { name: 'investment', label: 'Investment' },
+    { name: 'debt_payment', label: 'Debt Payment' },
+    { name: 'miscellaneous', label: 'Miscellaneous' },
+    { name: 'other', label: 'Other' }
   ];
 
   const handleSubmit = async (e) => {
@@ -83,7 +92,7 @@ const Budget = ({ user }) => {
       setEditingId(null);
       setFormData({ name: '', category: 'food', amount: '', period: 'monthly' });
     } catch (err) {
-      console.error('Error saving budget:', err);
+      
       setError('Failed to save budget');
     }
   };
@@ -94,7 +103,7 @@ const Budget = ({ user }) => {
       await api.budgets.delete(id);
       setBudgets(budgets.filter((b) => b._id !== id));
     } catch (err) {
-      console.error('Error deleting budget:', err);
+      
       setError('Failed to delete budget');
     }
   };

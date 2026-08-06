@@ -16,6 +16,7 @@ router.use(protect);
 router.use(apiLimiter);
 
 router.get('/', getSettings);
+// Preferences endpoint: payload elements (emailNotifications, smsNotifications, theme) strictly destructured; all injected parameters (isAdmin, userId, role) ignored.
 router.put('/preferences', settingsWriteLimiter, validateSettingsPreferencesUpdate, updatePreferences);
 router.put('/two-factor', settingsWriteLimiter, validateTwoFactorUpdate, updateTwoFactor);
 router.get('/linked-accounts', getLinkedAccounts);

@@ -1,10 +1,11 @@
-﻿import { Calendar, Download, FileText, Filter, Printer, Receipt, TrendingDown, TrendingUp } from 'lucide-react';
+import { Calendar, Download, FileText, Filter, Printer, Receipt, TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import CustomCalendar from '../../components/ui/Calendar/CustomCalendar';
 import { formatCurrencyByPreference } from '../../utils/currency';
-import { fromLocalYYYYMMDD, toLocalYYYYMMDD } from '../../utils/date';
+import { fromLocalYYYYMMDD, parseTransactionDate, toLocalYYYYMMDD } from '../../utils/date';
 import { generateAccountStatementPDF, generateMiniStatementPDF } from '../../utils/pdfGenerator';
 import { getTransactions } from '../../utils/transactions';
+import '../../styles/pages/Statements.css';
 import {
   buildAccountStatementPrintHtml,
   buildCsvContent,
@@ -12,8 +13,7 @@ import {
   buildMiniStatementPrintHtml,
   calculateTransactionTotals,
   filterAndSortTransactions,
-  isTransferTransaction,
-  parseTransactionDate
+  isTransferTransaction
 } from './utils';
 
 const Statements = ({ user }) => {
@@ -32,7 +32,7 @@ const Statements = ({ user }) => {
         const txs = await getTransactions({ userId: user.id || user._id, fetchAll: true });
         setTransactions(Array.isArray(txs) ? txs : []);
       } catch (error) {
-        console.error('Error loading transactions:', error);
+        
         setTransactions([]);
       }
     };

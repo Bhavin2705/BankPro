@@ -1,4 +1,5 @@
 import { ArrowRight, Eye, EyeOff, Shield, Smartphone, Users } from 'lucide-react';
+import '../../styles/pages/Login.css';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login, loginWithAccount } from '../../utils/auth';
@@ -65,7 +66,7 @@ const Login = ({ onLogin, switchToRegister }) => {
         setError(result.error || 'Invalid email or password');
       }
     } catch (err) {
-      console.error('Login error:', err);
+      
       setError('Login failed. Please try again.');
     }
 
@@ -91,7 +92,7 @@ const Login = ({ onLogin, switchToRegister }) => {
         setError(result.error || 'Login failed');
       }
     } catch (err) {
-      console.error('Account selection error:', err);
+      
       setError('Login failed. Please try again.');
     }
 

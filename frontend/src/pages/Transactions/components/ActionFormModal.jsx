@@ -1,4 +1,4 @@
-﻿import { ArrowDownCircle, ArrowRightLeft, ArrowUpCircle } from 'lucide-react';
+import { ArrowDownCircle, ArrowRightLeft, ArrowUpCircle } from 'lucide-react';
 import { ACTION_TYPES } from '../constants';
 
 const PinError = ({ pinError }) => {
@@ -32,6 +32,9 @@ export default function ActionFormModal({
   banks,
   showBankSelector,
   setShowBankSelector,
+  cards,
+  selectedCardId,
+  setSelectedCardId,
 }) {
   if (!show) return null;
   const safeTransfer = transferData || {};
@@ -111,6 +114,29 @@ export default function ActionFormModal({
             />
           </div>
 
+          {actionType === 'withdraw' && (
+            <div className="form-group">
+              <label className="form-label">Card (optional)</label>
+              {cards && cards.length > 0 ? (
+                <select
+                  className="form-input"
+                  value={selectedCardId || ''}
+                  onChange={(e) => setSelectedCardId(e.target.value)}
+                  disabled={isProcessing || pinVerifying}
+                >
+                  <option value="">No card / Cash withdrawal</option>
+                  {cards.filter(c => c.status === 'active').map((card) => (
+                    <option key={card._id || card.id} value={card._id || card.id}>
+                      {card.cardName || card.cardBrand} •••• {String(card.cardNumber || '').slice(-4)} ({card.cardBrand})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="transactions-no-card-note">No active cards — withdrawal will proceed without a card.</p>
+              )}
+            </div>
+          )}
+
           <div className="form-group">
             <label className="form-label">Description (optional)</label>
             <input
@@ -131,10 +157,10 @@ export default function ActionFormModal({
               inputMode="numeric"
               className="form-input transactions-pin-input"
               value={pin || ''}
-                onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
-                placeholder="Enter 4 digit PIN"
-                pattern="[0-9]{4}"
-                maxLength="4"
+                onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                placeholder="Enter 4-6 digit PIN"
+                pattern="[0-9]{4,6}"
+                maxLength="6"
                 autoComplete="off"
             />
           </div>

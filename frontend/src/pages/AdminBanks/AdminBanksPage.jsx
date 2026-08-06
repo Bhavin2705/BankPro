@@ -1,7 +1,8 @@
-﻿import { useNotification } from '../../components/providers/NotificationProvider';
+import { useNotification } from '../../components/providers/NotificationProvider';
 import AddBankForm from './components/AddBankForm';
 import BanksList from './components/BanksList';
 import { useBanksManagement } from './hooks/useBanksManagement';
+import '../../styles/pages/AdminBanks.css';
 
 export default function AdminBanks() {
   const { showError, showSuccess } = useNotification();

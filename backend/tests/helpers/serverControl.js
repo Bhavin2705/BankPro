@@ -4,55 +4,23 @@ const path = require('path');
 
 const STATE_FILE = path.resolve(__dirname, '..', '.jest-server-state.json');
 
-const isServerUp = (baseUrl) => new Promise((resolve) => {
-    const url = new URL('/health', baseUrl);
-    const req = http.get(url, (res) => {
-        resolve(res.statusCode === 200);
-        res.resume();
-    });
+const isServerUp = baseUrl => new Promise(resolve => {
+    const req = http.get(new URL('/health', baseUrl), res => { resolve(res.statusCode === 200); res.resume(); });
     req.on('error', () => resolve(false));
-    req.setTimeout(1500, () => {
-        req.destroy();
-        resolve(false);
-    });
+    req.setTimeout(1500, () => { req.destroy(); resolve(false); });
 });
 
 const waitForServer = async (baseUrl, timeoutMs = 45000) => {
     const startedAt = Date.now();
-
     while (Date.now() - startedAt < timeoutMs) {
-        const up = await isServerUp(baseUrl);
-        if (up) {
-            return true;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        if (await isServerUp(baseUrl)) return true;
+        await new Promise(r => setTimeout(r, 1000));
     }
-
     return false;
 };
 
-const writeState = (state) => {
-    fs.writeFileSync(STATE_FILE, JSON.stringify(state), 'utf8');
-};
+const writeState = state => fs.writeFileSync(STATE_FILE, JSON.stringify(state), 'utf8');
+const readState = () => fs.existsSync(STATE_FILE) ? JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) : null;
+const clearState = () => { if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE); };
 
-const readState = () => {
-    if (!fs.existsSync(STATE_FILE)) {
-        return null;
-    }
-    return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-};
-
-const clearState = () => {
-    if (fs.existsSync(STATE_FILE)) {
-        fs.unlinkSync(STATE_FILE);
-    }
-};
-
-module.exports = {
-    STATE_FILE,
-    isServerUp,
-    waitForServer,
-    writeState,
-    readState,
-    clearState
-};
+module.exports = { STATE_FILE, isServerUp, waitForServer, writeState, readState, clearState };

@@ -67,7 +67,7 @@ export const getTransactions = async (params = {}) => {
 
     return allResults;
   } catch (error) {
-    console.error('Error fetching transactions:', error);
+    
     return [];
   }
 };
@@ -77,7 +77,7 @@ export const addTransaction = async (transactionData) => {
     const response = await api.transactions.create(transactionData);
     return response.success ? response.data : null;
   } catch (error) {
-    console.error('Error creating transaction:', error);
+    
     throw error;
   }
 };
@@ -87,7 +87,7 @@ export const getTransactionById = async (id) => {
     const response = await api.transactions.getById(id);
     return response.success ? response.data : null;
   } catch (error) {
-    console.error('Error fetching transaction:', error);
+    
     return null;
   }
 };
@@ -97,7 +97,7 @@ export const updateTransaction = async (id, transactionData) => {
     const response = await api.transactions.update(id, transactionData);
     return response.success ? response.data : null;
   } catch (error) {
-    console.error('Error updating transaction:', error);
+    
     throw error;
   }
 };
@@ -107,7 +107,7 @@ export const deleteTransaction = async (id) => {
     const response = await api.transactions.delete(id);
     return response.success;
   } catch (error) {
-    console.error('Error deleting transaction:', error);
+    
     throw error;
   }
 };
@@ -142,7 +142,7 @@ export const getTransactionStats = async () => {
       }))
     };
   } catch (error) {
-    console.error('Error fetching transaction stats:', error);
+    
     return {
       totalTransactions: 0,
       monthlyIncome: 0,
@@ -157,7 +157,7 @@ export const getTransactionCategories = async () => {
     const response = await api.transactions.getCategories();
     return response.success ? response.data : [];
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    
     return [];
   }
 };
@@ -167,12 +167,7 @@ export const transferMoney = async (transferData) => {
     const response = await api.transactions.transfer(transferData);
     return response;
   } catch (error) {
-    console.error('Error processing transfer:', error);
+    
     throw error;
   }
-};
-
-export const getTransactionsSync = () => {
-  console.warn('getTransactionsSync is deprecated, use getTransactions() instead');
-  return [];
 };

@@ -3,51 +3,24 @@ const { buildUserPayload } = require('./testData');
 
 const registerUser = async (overrides = {}) => {
     const payload = buildUserPayload(overrides);
-    const response = await api()
-        .post('/api/auth/register')
-        .send(payload);
-
-    if (!response.body?.success || !response.body?.data?.user || !response.body?.data?.token) {
+    const response = await api().post('/api/auth/register').send(payload);
+    const token = response.body?.token || response.body?.data?.token;
+    const user = response.body?.data?.user || response.body?.data;
+    if (!response.body?.success || !user || !token) {
         throw new Error(`User registration failed in test helper (status: ${response.status}). Response: ${JSON.stringify(response.body)}`);
     }
-
-    return {
-        payload,
-        response,
-        token: response.body?.data?.token,
-        refreshToken: response.body?.data?.refreshToken,
-        user: response.body?.data?.user
-    };
+    return { payload, response, token, refreshToken: response.body?.refreshToken || response.body?.data?.refreshToken, user };
 };
 
-const loginUser = async ({ identifier, password }) => api()
-    .post('/api/auth/login')
-    .send({ identifier, password });
+const loginUser = async ({ identifier, password }) => api().post('/api/auth/login').send({ identifier, password });
 
 const createAuthenticatedUser = async (overrides = {}) => {
-    const registration = await registerUser(overrides);
-    const loginResponse = await loginUser({
-        identifier: registration.payload.email,
-        password: registration.payload.password
-    });
-
-    if (!loginResponse.body?.success || !loginResponse.body?.data?.token || !loginResponse.body?.data?.user) {
-        throw new Error(`User login failed in test helper (status: ${loginResponse.status}). Response: ${JSON.stringify(loginResponse.body)}`);
-    }
-
-    return {
-        payload: registration.payload,
-        user: loginResponse.body?.data?.user,
-        token: loginResponse.body?.data?.token,
-        refreshToken: loginResponse.body?.data?.refreshToken,
-        authHeader: withAuth(loginResponse.body?.data?.token),
-        registrationResponse: registration.response,
-        loginResponse
-    };
+    const reg = await registerUser(overrides);
+    const loginRes = await loginUser({ identifier: reg.payload.email, password: reg.payload.password });
+    const token = loginRes.body?.token || loginRes.body?.data?.token;
+    const user = loginRes.body?.data?.user || loginRes.body?.data;
+    if (!loginRes.body?.success || !token) throw new Error(`User login failed in test helper: ${JSON.stringify(loginRes.body)}`);
+    return { payload: reg.payload, user, token, refreshToken: loginRes.body?.refreshToken || loginRes.body?.data?.refreshToken, authHeader: withAuth(token), registrationResponse: reg.response, loginResponse: loginRes };
 };
 
-module.exports = {
-    registerUser,
-    loginUser,
-    createAuthenticatedUser
-};
+module.exports = { registerUser, loginUser, createAuthenticatedUser };

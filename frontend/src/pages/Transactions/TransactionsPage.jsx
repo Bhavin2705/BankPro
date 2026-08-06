@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNotification } from '../../components/providers/NotificationProvider';
 import { api } from '../../utils/api';
 import { getNonAdminUsers } from '../../utils/auth';
@@ -11,8 +11,20 @@ import {
   TransactionsList,
   TransactionsTabs,
 } from './components';
-import { createInitialFormData, createInitialTransferData } from './constants';
 import { getVisibleTransactions } from './utils';
+import '../../styles/pages/Transactions.css';
+
+const INITIAL_FORM_DATA = { amount: '', description: '' };
+const INITIAL_TRANSFER_DATA = {
+  transferMethod: 'phone',
+  recipientPhone: '',
+  recipientAccount: '',
+  selfTransfer: false,
+  selfRecipientAccount: '',
+  recipientName: '',
+  recipientBank: { id: 'bankpro', name: 'BankPro' },
+  description: '',
+};
 
 const getCardIdentifier = (card) => card?.id || card?._id || '';
 const isValidCardId = (cardId) => typeof cardId === 'string' && /^[a-f\d]{24}$/i.test(cardId);
@@ -30,8 +42,8 @@ export default function Transactions({ user, onUserUpdate }) {
   const [showActionForm, setShowActionForm] = useState(false);
   const [actionType, setActionType] = useState('deposit');
 
-  const [formData, setFormData] = useState(createInitialFormData);
-  const [transferData, setTransferData] = useState(createInitialTransferData);
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [transferData, setTransferData] = useState(INITIAL_TRANSFER_DATA);
   const [banks, setBanks] = useState([]);
   const [selfAccounts, setSelfAccounts] = useState([]);
   const [showBankSelector, setShowBankSelector] = useState(false);
@@ -60,7 +72,7 @@ export default function Transactions({ user, onUserUpdate }) {
         }
       }
     } catch (error) {
-      console.error('Error loading cards:', error);
+      
     }
   }, []);
 
@@ -71,7 +83,7 @@ export default function Transactions({ user, onUserUpdate }) {
       setTransactions(txs || []);
     } catch (err) {
       showError('Failed to load transactions');
-      console.error(err);
+      
     } finally {
       setLoading(false);
     }
@@ -94,7 +106,7 @@ export default function Transactions({ user, onUserUpdate }) {
         if (res?.success) setBanks(res.data || []);
       } catch (error) {
         showError('Failed to load banks');
-        console.error(error);
+        
       }
     };
     loadBanks();
@@ -136,8 +148,8 @@ export default function Transactions({ user, onUserUpdate }) {
 
   const resetForms = () => {
     setShowActionForm(false);
-    setFormData(createInitialFormData());
-    setTransferData(createInitialTransferData());
+    setFormData(INITIAL_FORM_DATA);
+    setTransferData(INITIAL_TRANSFER_DATA);
     setShowBankSelector(false);
     setPin('');
     setPinError('');
@@ -176,10 +188,7 @@ export default function Transactions({ user, onUserUpdate }) {
       resetForms();
       return true;
     } catch (err) {
-      console.error('Deposit/Withdraw error details:', {
-        message: err.message,
-        fullError: err,
-      });
+      
       showError(err.message || 'Operation failed. Please try again.');
       return false;
     }
@@ -206,10 +215,7 @@ export default function Transactions({ user, onUserUpdate }) {
       resetForms();
       return true;
     } catch (err) {
-      console.error('Transfer error details:', {
-        message: err.message,
-        fullError: err,
-      });
+      
       showError(err.message || 'Transfer failed. Please try again.');
       return false;
     }
@@ -232,6 +238,7 @@ export default function Transactions({ user, onUserUpdate }) {
   };
 
   const verifyPin = async (transactionToProcess = null) => {
+    if (pinVerifying || isSubmittingAction) return;
     if (!pin.trim()) {
       setPinError('Please enter your PIN');
       return;
@@ -239,6 +246,7 @@ export default function Transactions({ user, onUserUpdate }) {
 
     try {
       setPinVerifying(true);
+      setIsSubmittingAction(true);
       setPinError('');
       const result = await api.users.verifyPin(pin);
 
@@ -274,10 +282,8 @@ export default function Transactions({ user, onUserUpdate }) {
       showError('Insufficient balance');
       return;
     }
-    if (!isDeposit && (!selectedCard || selectedCard.status !== 'active')) {
-      showError('Select an active card to complete this withdrawal');
-      return;
-    }
+    // Card is optional — if one is selected it will be validated by the backend.
+    // Withdrawal without a card proceeds as a plain balance debit.
 
     if (!pin.trim()) {
       setPinError('Please enter your PIN');
@@ -449,6 +455,9 @@ export default function Transactions({ user, onUserUpdate }) {
         banks={banks}
         showBankSelector={showBankSelector}
         setShowBankSelector={setShowBankSelector}
+        cards={cards}
+        selectedCardId={selectedCardId}
+        setSelectedCardId={setSelectedCardId}
       />
 
     </div>

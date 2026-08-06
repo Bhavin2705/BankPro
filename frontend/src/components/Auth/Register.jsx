@@ -1,4 +1,5 @@
 import { ArrowRight, Building2, Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react';
+import '../../styles/pages/Register.css';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
@@ -58,11 +59,17 @@ const Register = ({ onLogin, switchToLogin }) => {
       return;
     }
 
-    let strength = 0;
-    if (formData.pin.length === 4) strength += 1;
-    if (!/^(\d)\1{3}$/.test(formData.pin)) strength += 1; // Not all same digits
-    
-    setPinStrength(strength);
+    const pin = formData.pin;
+    const isRepeating = /^(\d)\1+$/.test(pin);
+    const isSequential = '01234567890'.includes(pin) || '9876543210'.includes(pin);
+
+    if (pin.length < 4 || isRepeating || isSequential) {
+      setPinStrength(1); // Weak
+    } else if (pin.length >= 6) {
+      setPinStrength(3); // Strong
+    } else {
+      setPinStrength(2); // Medium
+    }
   }, [formData.pin]);
 
   const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -79,7 +86,7 @@ const Register = ({ onLogin, switchToLogin }) => {
       const response = await api.users.checkEmail(email);
       setEmailExists(response.exists);
     } catch (err) {
-      console.error('Email check error:', err);
+      
       setError('Failed to verify email. Please try again.');
     } finally {
       setEmailCheckInProgress(false);
@@ -101,7 +108,7 @@ const Register = ({ onLogin, switchToLogin }) => {
         }
       }
     } catch (err) {
-      console.error('Phone check error:', err);
+      
       setError('Failed to verify phone number. Please try again.');
     } finally {
       setPhoneCheckInProgress(false);
@@ -194,13 +201,13 @@ const Register = ({ onLogin, switchToLogin }) => {
       return;
     }
 
-    if (!/^\d{4}$/.test(formData.pin)) {
-      setError('PIN must be a 4 digit number');
+    if (!/^\d{4,6}$/.test(formData.pin)) {
+      setError('PIN must be a 4-6 digit number');
       setLoading(false);
       return;
     }
 
-    if (/^(\d)\1{3}$/.test(formData.pin)) {
+    if (/^(\d)\1+$/.test(formData.pin)) {
       setError('PIN cannot be all the same digits (e.g., 1111)');
       setLoading(false);
       return;
@@ -213,7 +220,6 @@ const Register = ({ onLogin, switchToLogin }) => {
         phone: formData.phone,
         password: formData.password,
         pin: formData.pin,
-        initialDeposit: parseFloat(formData.initialDeposit) || 0,
       });
 
       if (result.success) {
@@ -223,7 +229,7 @@ const Register = ({ onLogin, switchToLogin }) => {
         setError(result.error);
       }
     } catch (err) {
-      console.error('Registration error:', err);
+      
       setError('Registration failed. Please try again.');
     }
 
@@ -251,13 +257,13 @@ const Register = ({ onLogin, switchToLogin }) => {
 
   const getPinStrengthColor = () => {
     if (pinStrength <= 1) return 'bg-red-500';
-    if (pinStrength <= 2) return 'bg-yellow-500';
+    if (pinStrength === 2) return 'bg-yellow-500';
     return 'bg-green-500';
   };
 
   const getPinStrengthText = () => {
     if (pinStrength <= 1) return 'Weak';
-    if (pinStrength <= 2) return 'Medium';
+    if (pinStrength === 2) return 'Medium';
     return 'Strong';
   };
 
@@ -283,7 +289,7 @@ const Register = ({ onLogin, switchToLogin }) => {
 
   const handlePinChange = (e) => {
     const value = e.target.value;
-    if (/^\d*$/.test(value) && value.length <= 4) {
+    if (/^\d*$/.test(value) && value.length <= 6) {
       setFormData({
         ...formData,
         pin: value,
@@ -293,7 +299,7 @@ const Register = ({ onLogin, switchToLogin }) => {
 
   const handleConfirmPinChange = (e) => {
     const value = e.target.value;
-    if (/^\d*$/.test(value) && value.length <= 4) {
+    if (/^\d*$/.test(value) && value.length <= 6) {
       setFormData({
         ...formData,
         confirmPin: value,
@@ -547,11 +553,11 @@ const Register = ({ onLogin, switchToLogin }) => {
                     value={formData.pin}
                     onChange={handlePinChange}
                     required
-                    placeholder="Set a 4 digit PIN"
+                    placeholder="Set a 4-6 digit PIN"
                     inputMode="numeric"
-                    pattern="[0-9]{4}"
-                    maxLength="4"
-                    title="PIN must be 4 digits"
+                    pattern="[0-9]{4,6}"
+                    maxLength="6"
+                    title="PIN must be 4-6 digits"
                   />
                   <button
                     type="button"
@@ -585,7 +591,7 @@ const Register = ({ onLogin, switchToLogin }) => {
                   </div>
                 )}
                 <p className="mt-2 text-xs text-gray-500">
-                  Use a 4 digit PIN for deposits and withdrawals. Avoid patterns like 1111.
+                  Use a 4-6 digit PIN for deposits and withdrawals. Avoid patterns like 1111.
                 </p>
               </div>
               <div>
@@ -603,9 +609,9 @@ const Register = ({ onLogin, switchToLogin }) => {
                     required
                     placeholder="Confirm your PIN"
                     inputMode="numeric"
-                    pattern="[0-9]{4}"
-                    maxLength="4"
-                    title="PIN must be 4 digits"
+                    pattern="[0-9]{4,6}"
+                    maxLength="6"
+                    title="PIN must be 4-6 digits"
                   />
                   <button
                     type="button"
@@ -619,26 +625,6 @@ const Register = ({ onLogin, switchToLogin }) => {
                 {formData.pin && formData.confirmPin && formData.pin !== formData.confirmPin && (
                   <p className="text-red-500 text-sm mt-2">PINs do not match</p>
                 )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Initial Deposit (Optional)</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500">Rs</span>
-                  </div>
-                  <input
-                    type="text"
-                    name="initialDeposit"
-                    className="auth-white-input w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-                    value={formData.initialDeposit}
-                    onChange={handleInitialDepositChange}
-                    inputMode="decimal"
-                    placeholder="Enter initial deposit amount"
-                  />
-                </div>
-                <p className="mt-1 text-sm text-gray-500">
-                  You can start with Rs0 and deposit later, or make an initial deposit now.
-                </p>
               </div>
               <button
                 type="submit"

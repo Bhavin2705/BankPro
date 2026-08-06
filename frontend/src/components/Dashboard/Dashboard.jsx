@@ -1,7 +1,8 @@
-﻿import { Activity, Wallet, TrendingDown, TrendingUp } from 'lucide-react';
+import { Activity, Wallet, TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { formatCurrencyByPreference } from '../../utils/currency';
 import { getTransactionStats } from '../../utils/transactions';
+import '../../styles/pages/Dashboard.css';
 
 const Dashboard = ({ user }) => {
   const [stats, setStats] = useState({
@@ -25,7 +26,7 @@ const Dashboard = ({ user }) => {
         setError('');
       } catch (fetchError) {
         setError('Failed to load dashboard data');
-        console.error('Dashboard error:', fetchError);
+        
       } finally {
         setLoading(false);
       }
@@ -47,7 +48,7 @@ const Dashboard = ({ user }) => {
     })
   );
 
-  const isNewUser = Boolean(user?.firstLogin);
+  const isNewUser = Boolean(user?.firstLogin && stats.totalTransactions === 0 && (user?.balance || 0) === 0);
 
   return (
     <div className="container dashboard-container">

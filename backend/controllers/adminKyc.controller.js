@@ -1,81 +1,82 @@
 const User = require('../models/User');
 const { createInAppNotification } = require('../utils/notifications');
+const asyncHandler = require('../utils/asyncHandler');
 
 const listPendingKyc = async (req, res) => {
-    try {
-        const users = await User.find({ 'kyc.status': 'pending' })
-            .select('name email kyc createdAt')
-            .sort({ 'kyc.submittedAt': -1 });
-        return res.status(200).json({ success: true, data: users });
-    } catch (error) {
-        console.error('List pending KYC error:', error);
-        return res.status(500).json({ success: false, error: 'Server error fetching pending verifications' });
+    const users = await User.find({ 'kyc.status': 'pending' }).select('name email kyc createdAt').sort({ 'kyc.submittedAt': -1 });
+    res.status(200).json({ success: true, data: users });
+};
+
+const processKycReview = async ({ userId, adminId, status, rejectionReason = '', notifConfig }) => {
+    const user = await User.findById(userId);
+    if (!user) {
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
     }
+
+    user.kyc = {
+        ...(user.kyc || {}),
+        status,
+        reviewedAt: new Date(),
+        reviewedBy: adminId,
+        rejectionReason
+    };
+    await user.save();
+
+    await createInAppNotification({
+        userId: user._id,
+        type: notifConfig.type,
+        title: notifConfig.title,
+        message: notifConfig.message,
+        priority: notifConfig.priority,
+        metadata: { category: 'kyc' }
+    });
+
+    return user.kyc;
 };
 
 const approveKyc = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.userId);
-        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
-
-        user.kyc = user.kyc || {};
-        user.kyc.status = 'verified';
-        user.kyc.reviewedAt = new Date();
-        user.kyc.reviewedBy = req.user._id;
-        user.kyc.rejectionReason = '';
-        await user.save();
-
-        await createInAppNotification({
-            userId: user._id,
+    const kyc = await processKycReview({
+        userId: req.params.userId,
+        adminId: req.user._id,
+        status: 'verified',
+        rejectionReason: '',
+        notifConfig: {
             type: 'account_update',
             title: 'Verification Approved',
             message: 'Your account verification has been approved.',
-            priority: 'medium',
-            metadata: { category: 'kyc' }
-        });
-
-        return res.status(200).json({ success: true, data: user.kyc });
-    } catch (error) {
-        console.error('Approve KYC error:', error);
-        return res.status(500).json({ success: false, error: 'Server error approving verification' });
-    }
+            priority: 'medium'
+        }
+    });
+    res.status(200).json({ success: true, data: kyc });
 };
 
 const rejectKyc = async (req, res) => {
-    try {
-        const reason = String(req.body.reason || '').trim();
-        if (!reason) {
-            return res.status(400).json({ success: false, error: 'Rejection reason is required' });
-        }
+    const reason = String(req.body.reason || '').trim();
+    if (!reason) {
+        const error = new Error('Rejection reason is required');
+        error.statusCode = 400;
+        throw error;
+    }
 
-        const user = await User.findById(req.params.userId);
-        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
-
-        user.kyc = user.kyc || {};
-        user.kyc.status = 'rejected';
-        user.kyc.reviewedAt = new Date();
-        user.kyc.reviewedBy = req.user._id;
-        user.kyc.rejectionReason = reason;
-        await user.save();
-
-        await createInAppNotification({
-            userId: user._id,
+    const kyc = await processKycReview({
+        userId: req.params.userId,
+        adminId: req.user._id,
+        status: 'rejected',
+        rejectionReason: reason,
+        notifConfig: {
             type: 'security_alert',
             title: 'Verification Rejected',
             message: `Your verification was rejected. Reason: ${reason}`,
-            priority: 'high',
-            metadata: { category: 'kyc' }
-        });
-
-        return res.status(200).json({ success: true, data: user.kyc });
-    } catch (error) {
-        console.error('Reject KYC error:', error);
-        return res.status(500).json({ success: false, error: 'Server error rejecting verification' });
-    }
+            priority: 'high'
+        }
+    });
+    res.status(200).json({ success: true, data: kyc });
 };
 
 module.exports = {
-    listPendingKyc,
-    approveKyc,
-    rejectKyc
+    listPendingKyc: asyncHandler(listPendingKyc),
+    approveKyc: asyncHandler(approveKyc),
+    rejectKyc: asyncHandler(rejectKyc)
 };

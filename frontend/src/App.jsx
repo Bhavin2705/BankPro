@@ -1,8 +1,9 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, BrowserRouter as Router } from 'react-router-dom';
 
 import { NotificationProvider } from './components/providers/NotificationProvider';
 import Sidebar from './components/Layout/Sidebar';
+import { BackendWakeScreen, SessionExpiredScreen, ErrorScreen } from './components/Layout/StatusScreens';
 
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
@@ -36,21 +37,16 @@ import {
   refreshUserData,
 } from './utils/auth';
 
-
 function App() {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState({ type: 'loading', message: 'Preparing Your Workspace', attempt: 0, error: null });
   const [darkMode, setDarkMode] = useState(false);
-  const [error, setError] = useState(null);
-  const [sessionExpired, setSessionExpired] = useState(false);
-  const [backendWaking, setBackendWaking] = useState(false);
-  const [wakeAttempt, setWakeAttempt] = useState(0);
 
   const retryTimeoutRef = useRef(null);
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────────────────────────────────────
   //  Helpers
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────────────────────────────────────
 
   const applyTheme = (userData) => {
     const isDark = userData?.preferences?.theme === 'dark';
@@ -74,7 +70,6 @@ function App() {
         setUser((prev) => ({ ...prev, preferences: res.data }));
       }
     } catch {
-      // rollback on failure
       applyTheme(user);
     }
   };
@@ -82,7 +77,7 @@ function App() {
   const handleLogin = (userData) => {
     setUser(userData);
     applyTheme(userData);
-    setError(null);
+    setStatus({ type: 'ready' });
   };
 
   const handleLogout = async () => {
@@ -91,17 +86,15 @@ function App() {
     } finally {
       setUser(null);
       applyTheme(null);
-      setError(null);
+      setStatus({ type: 'ready' });
     }
   };
 
   const handleSessionExpired = () => {
-    // clear auth cookies
     document.cookie = 'bank_auth_token=; path=/; max-age=0';
     document.cookie = 'bank_auth_refresh_token=; path=/; max-age=0';
     setUser(null);
-    setSessionExpired(false);
-    setError(null);
+    setStatus({ type: 'ready' });
   };
 
   const handleUserUpdate = (updatedUser) => {
@@ -109,22 +102,24 @@ function App() {
     applyTheme(updatedUser);
   };
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────────────────────────────────────
   //  Initialization & Health check
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────────────────────────────────────
 
   const scheduleRetry = () => {
     if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
 
-    setBackendWaking(true);
-    setWakeAttempt((c) => c + 1);
+    setStatus((prev) => ({
+      type: 'waking',
+      message: 'Waking Secure Banking Services',
+      attempt: prev.attempt + 1,
+    }));
 
     retryTimeoutRef.current = setTimeout(() => initializeApp({ silent: true }), 5000);
   };
 
   const initializeApp = async ({ silent = false } = {}) => {
-    if (!silent) setLoading(true);
-    setError(null);
+    if (!silent) setStatus({ type: 'loading', message: 'Preparing Your Workspace', attempt: 0, error: null });
 
     const pathname = window.location.pathname;
     const isAuthPage = [
@@ -135,20 +130,14 @@ function App() {
       '/password-reset-success',
     ].some((p) => pathname.startsWith(p));
 
-    // Check backend availability
     if (!(await checkBackendHealth())) {
       scheduleRetry();
-      setLoading(false);
       return;
     }
 
-    // Reset retry state
     if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
-    setBackendWaking(false);
-    setWakeAttempt(0);
 
     try {
-      // Non-blocking user init (best effort)
       await Promise.race([
         initializeUsers(),
         new Promise((_, r) => setTimeout(() => r(new Error('init timeout')), 3000)),
@@ -163,26 +152,23 @@ function App() {
         if (freshUser) {
           setUser(freshUser);
           applyTheme(freshUser);
-          setSessionExpired(false);
+          setStatus({ type: 'ready' });
         } else {
           setUser(null);
           applyTheme(null);
           const hasToken = document.cookie.includes('token=') || document.cookie.includes('refreshToken=');
-          setSessionExpired(!!hasToken);
+          setStatus(hasToken ? { type: 'session-expired' } : { type: 'ready' });
         }
       } else {
         setUser(null);
         applyTheme(null);
-        setSessionExpired(false);
+        setStatus({ type: 'ready' });
       }
     } catch (err) {
-      setError(err.message || 'Initialization failed');
-    } finally {
-      setLoading(false);
+      setStatus({ type: 'error', error: err.message || 'Initialization failed' });
     }
   };
 
-  // Load exchange rates when user / currency preference changes
   useEffect(() => {
     if (!user?.preferences?.currency) {
       setExchangeRates(null);
@@ -196,7 +182,7 @@ function App() {
           setExchangeRates(res.rates);
         }
       } catch (err) {
-        console.error('Failed to load exchange rates', err);
+        
       }
     })();
   }, [user?._id, user?.preferences?.currency]);
@@ -206,9 +192,9 @@ function App() {
     return () => clearTimeout(retryTimeoutRef.current);
   }, []);
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────────────────────────────────────
   //  Route Wrappers
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────────────────────────────────────
 
   const AuthWrapper = ({ children }) => (user ? <Navigate to="/dashboard" replace /> : children);
 
@@ -230,15 +216,15 @@ function App() {
     </div>
   );
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────────────────────────────────────
   //  Render
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ──────────────────────────────────────────────
 
-  if (loading) {
-    return <BackendWakeScreen message="Preparing Your Workspace" />;
+  if (status.type === 'loading') {
+    return <BackendWakeScreen message={status.message || 'Preparing Your Workspace'} />;
   }
 
-  if (sessionExpired) {
+  if (status.type === 'session-expired') {
     return (
       <SessionExpiredScreen
         onClick={() => {
@@ -249,16 +235,15 @@ function App() {
     );
   }
 
-  if (backendWaking) {
-    return <BackendWakeScreen message="Waking Secure Banking Services" attempt={wakeAttempt} />;
+  if (status.type === 'waking') {
+    return <BackendWakeScreen message="Waking Secure Banking Services" attempt={status.attempt} />;
   }
 
-  if (error) {
+  if (status.type === 'error') {
     return (
       <ErrorScreen
-        message={error}
+        message={status.error}
         onRetry={() => {
-          setError(null);
           initializeApp();
         }}
       />
@@ -309,54 +294,4 @@ function App() {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-//  Simple presentational components (can be moved to separate files)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function BackendWakeScreen({ message, attempt = null }) {
-  return (
-    <div className="backend-wake-screen">
-      <div className="backend-wake-orb backend-wake-orb-one" />
-      <div className="backend-wake-orb backend-wake-orb-two" />
-      <div className="backend-wake-card">
-        <div className="backend-wake-spinner">
-          <span /><span /><span />
-        </div>
-        <h1>{message}</h1>
-        <p>
-          {attempt
-            ? `Our services are starting up after inactivity. Attempt ${attempt} â€“ reconnecting...`
-            : 'Please wait while we initialize your secure session.'}
-        </p>
-        {attempt && (
-          <div className="backend-wake-status">
-            Attempt {attempt} â€“ reconnecting automatically
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function SessionExpiredScreen({ onClick }) {
-  return (
-    <div className="session-expired-screen">
-      <h2>Your session has expired</h2>
-      <p>Please sign in again to continue.</p>
-      <button onClick={onClick}>Go to Login</button>
-    </div>
-  );
-}
-
-function ErrorScreen({ message, onRetry }) {
-  return (
-    <div className="error-screen">
-      <h2>Something went wrong</h2>
-      <p>{message || 'Failed to initialize application'}</p>
-      <button onClick={onRetry}>Retry</button>
-    </div>
-  );
-}
-
 export default App;
-

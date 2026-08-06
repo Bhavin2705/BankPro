@@ -2,6 +2,7 @@ import { CheckCircle, XCircle, FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { API_BASE_URL, api } from '../../utils/api';
 import { useNotification } from '../../components/providers/NotificationProvider';
+import '../../styles/pages/AdminKyc.css';
 
 const AdminKyc = () => {
   const { showError, showSuccess } = useNotification();
@@ -22,7 +23,7 @@ const AdminKyc = () => {
       const res = await api.adminKyc.list();
       setPending(res?.success ? res.data : []);
     } catch (error) {
-      console.error('Load pending KYC error:', error);
+      
       showError('Failed to load verification queue');
     } finally {
       setLoading(false);

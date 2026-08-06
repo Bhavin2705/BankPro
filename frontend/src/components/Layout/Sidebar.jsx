@@ -19,6 +19,7 @@ import { useMemo, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { canAccessAdminFeatures } from '../../utils/auth';
 import { API_BASE_URL } from '../../utils/api';
+import '../../styles/pages/Sidebar.css';
 
 const BASE_NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },
@@ -41,7 +42,6 @@ const ADMIN_NAV_ITEMS = [
 
 const Sidebar = ({ user, onLogout, darkMode, toggleDarkMode }) => {
   const location = useLocation();
-  const [isCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = useMemo(() => (
@@ -100,7 +100,7 @@ const Sidebar = ({ user, onLogout, darkMode, toggleDarkMode }) => {
       )}
 
       <aside
-        className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileMenuOpen ? 'mobile-open' : ''}`}
+        className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}
       >
         <div className="sidebar-header">
           <div className="sidebar-brand">BankPro</div>
@@ -119,7 +119,7 @@ const Sidebar = ({ user, onLogout, darkMode, toggleDarkMode }) => {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Icon size={20} />
-                    {!isCollapsed && <span>{item.label}</span>}
+                    <span>{item.label}</span>
                   </Link>
                 </li>
               );
@@ -146,12 +146,10 @@ const Sidebar = ({ user, onLogout, darkMode, toggleDarkMode }) => {
                 </div>
               );
             })()}
-            {!isCollapsed && (
-              <div className="sidebar-user-meta">
-                <div className="sidebar-user-name">{user?.name}</div>
-                <div className="sidebar-user-role">{user?.role}</div>
-              </div>
-            )}
+            <div className="sidebar-user-meta">
+              <div className="sidebar-user-name">{user?.name}</div>
+              <div className="sidebar-user-role">{user?.role}</div>
+            </div>
           </div>
 
           <button
@@ -159,7 +157,7 @@ const Sidebar = ({ user, onLogout, darkMode, toggleDarkMode }) => {
             className="sidebar-logout-btn"
           >
             <LogOut size={18} />
-            {!isCollapsed && <span>Logout</span>}
+            <span>Logout</span>
           </button>
         </div>
       </aside>

@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, Mail, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
+import '../../styles/pages/Login.css';
 
 const ForgotPassword = ({ onBack, onResetTokenGenerated }) => {
   const [email, setEmail] = useState('');
@@ -51,7 +52,7 @@ const ForgotPassword = ({ onBack, onResetTokenGenerated }) => {
   if (isSubmitted) {
     return (
       <div className="min-h-screen flex bg-gradient-to-br from-blue-50 to-indigo-50">
-        <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
+        <div className="hidden lg:flex auth-hero-panel auth-hero-gradient flex-col justify-between p-12 text-white">
           <div className="flex items-center space-x-2">
             <h1 className="text-2xl font-bold">BankPro</h1>
           </div>
@@ -107,7 +108,7 @@ const ForgotPassword = ({ onBack, onResetTokenGenerated }) => {
                     if (typeof onBack === 'function') return onBack();
                     navigate('/login');
                   }}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center"
+                  className="auth-primary-cta w-full text-white py-3 px-4 rounded-lg font-medium hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center transition-all duration-300"
                 >
                   <ArrowLeft size={18} className="mr-2" />
                   Back to Login
@@ -122,7 +123,7 @@ const ForgotPassword = ({ onBack, onResetTokenGenerated }) => {
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
+      <div className="hidden lg:flex auth-hero-panel auth-hero-gradient flex-col justify-between p-12 text-white">
         <div className="flex items-center space-x-2">
           <h1 className="text-2xl font-bold">BankPro</h1>
         </div>
@@ -198,7 +199,7 @@ const ForgotPassword = ({ onBack, onResetTokenGenerated }) => {
 
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                className="auth-primary-cta w-full text-white py-3.5 px-4 rounded-lg font-medium hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-300"
                 disabled={loading || !email.trim()}
               >
                 {loading ? (
