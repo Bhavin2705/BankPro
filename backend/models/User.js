@@ -3,9 +3,9 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
 const userSchema = new mongoose.Schema({
-    name: { type: String, required: [true, 'Name is required'], trim: true, maxlength: 50, validate: { validator: v => /^[A-Za-z ]+$/.test(v), message: 'Name can only contain alphabets and spaces' } },
+    name: { type: String, required: [true, 'Name is required'], trim: true, maxlength: 60, validate: { validator: v => /^[\p{L}\s\-\'\.]+$/u.test(v), message: 'Name can only contain letters, spaces, hyphens, and dots' } },
     email: { type: String, required: [true, 'Email is required'], unique: true, lowercase: true, validate: { validator: e => /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(e), message: 'Please enter a valid email' } },
-    phone: { type: String, required: [true, 'Phone number is required'], validate: { validator: p => /^\d{10}$/.test(p), message: 'Please enter a valid 10-digit phone number' } },
+    phone: { type: String, required: [true, 'Phone number is required'], validate: { validator: p => /^\+?[\d\s\-]{7,15}$/.test(p), message: 'Please enter a valid phone number' } },
     password: { type: String, required: [true, 'Password is required'], minlength: 8, select: false, validate: { validator: v => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(v), message: 'Password requirement not met' } },
     pin: { type: String, required: [true, 'PIN is required'], minlength: 4, maxlength: 6, select: false, validate: { validator: v => /^\d{4,6}$/.test(v), message: 'PIN must be 4 to 6 digits' } },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },

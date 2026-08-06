@@ -1,8 +1,10 @@
-﻿import { Mail, MapPin, Phone, User } from 'lucide-react';
+import { Mail, MapPin, Phone, User } from 'lucide-react';
 import CustomCalendar from '../../../components/ui/Calendar/CustomCalendar';
 import { toLocalYYYYMMDD } from '../../../utils/date';
+import { getTranslation } from '../../../utils/i18n';
 
 const ProfileTab = ({
+  lang = 'en',
   user,
   profileData,
   setProfileData,
@@ -29,7 +31,7 @@ const ProfileTab = ({
   <div>
     <h3 className="settings-section-title">
       <User size={20} />
-      Profile Information
+      {getTranslation('profileInformation', lang)}
     </h3>
 
     <div className="settings-avatar-row">
@@ -66,40 +68,30 @@ const ProfileTab = ({
         />
         <div className="settings-avatar-buttons">
           <label htmlFor="profile-photo-input" className="btn btn-secondary settings-avatar-btn">
-            Choose Photo
+            {profilePhotoUploading ? getTranslation('uploading', lang) : getTranslation('choosePhoto', lang)}
           </label>
-          <button
-            type="button"
-            className="btn btn-primary settings-avatar-btn"
-            onClick={onProfilePhotoUpload}
-            disabled={!profilePhotoPreview || profilePhotoUploading}
-          >
-            {profilePhotoUploading ? 'Uploading...' : 'Upload'}
-          </button>
         </div>
-        <div className="settings-help-text">JPEG, PNG, or WEBP. Max 2MB.</div>
+        <div className="settings-help-text">{getTranslation('photoSpecs', lang)}</div>
       </div>
     </div>
 
     <form onSubmit={handleProfileUpdate} onKeyDown={handleFormKeyDown}>
       <div className="settings-grid-300">
         <div className="form-group">
-          <label className="form-label">Full Name</label>
+          <label className="form-label">{getTranslation('fullName', lang)}</label>
           <input
             type="text"
             name="name"
             className="form-input"
             value={profileData.name}
             onChange={handleProfileChange}
-            pattern="[A-Za-z\\s]+"
-            title="Name can only contain letters and spaces"
             maxLength={60}
             required
           />
         </div>
 
         <div className="form-group">
-          <label className="form-label">Email Address</label>
+          <label className="form-label">{getTranslation('emailAddress', lang)}</label>
           <div className="settings-input-icon-wrap">
             <input
               type="email"
@@ -114,7 +106,7 @@ const ProfileTab = ({
         </div>
 
         <div className="form-group">
-          <label className="form-label">Phone Number</label>
+          <label className="form-label">{getTranslation('phoneNumber', lang)}</label>
           <div className="settings-input-icon-wrap">
             <input
               type="tel"
@@ -122,17 +114,16 @@ const ProfileTab = ({
               className="form-input settings-input-icon-pad"
               value={profileData.phone}
               onChange={handleProfileChange}
-              placeholder="Enter 10-digit phone number"
-              inputMode="numeric"
-              pattern="\\d{10}"
-              maxLength={10}
+              placeholder={getTranslation('phonePlaceholder', lang)}
+              inputMode="tel"
+              maxLength={18}
             />
             <Phone size={18} className="settings-input-icon" />
           </div>
         </div>
 
         <div className="form-group">
-          <label className="form-label">Date of Birth</label>
+          <label className="form-label">{getTranslation('dateOfBirth', lang)}</label>
           <div
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -146,27 +137,27 @@ const ProfileTab = ({
               onChange={(date) => {
                 setProfileData({ ...profileData, dateOfBirth: date ? toLocalYYYYMMDD(date) : '' });
               }}
-              placeholder="Select date of birth (DD/MM/YYYY)"
+              placeholder={getTranslation('dobPlaceholder', lang)}
               maxDate={new Date()}
             />
           </div>
         </div>
 
         <div className="form-group">
-          <label className="form-label">Occupation</label>
+          <label className="form-label">{getTranslation('occupation', lang)}</label>
           <input
             type="text"
             name="occupation"
             className="form-input"
             value={profileData.occupation}
             onChange={handleProfileChange}
-            placeholder="Enter your occupation"
+            placeholder={getTranslation('occupationPlaceholder', lang)}
             maxLength={50}
           />
         </div>
 
         <div className="form-group">
-          <label className="form-label">Address</label>
+          <label className="form-label">{getTranslation('address', lang)}</label>
           <div className="settings-input-icon-wrap">
             <input
               type="text"
@@ -174,14 +165,14 @@ const ProfileTab = ({
               className="form-input settings-input-icon-pad"
               value={profileData.address}
               onChange={handleProfileChange}
-              placeholder="Enter your address"
+              placeholder={getTranslation('addressPlaceholder', lang)}
               maxLength={120}
             />
             <button
               type="button"
               className="settings-input-icon-btn"
               onClick={onDetectLocation}
-              title="Detect my location"
+              title={getTranslation('detectLocationTitle', lang)}
               disabled={locatingAddress}
             >
               <MapPin size={18} className="settings-input-icon" />
@@ -191,38 +182,38 @@ const ProfileTab = ({
       </div>
 
       <div className="form-group settings-top-gap">
-        <label className="form-label">Account Number</label>
+        <label className="form-label">{getTranslation('accountNumber', lang)}</label>
         <input
           type="text"
           className="form-input settings-readonly"
-          value={user.accountNumber || 'Not assigned'}
+          value={user.accountNumber || getTranslation('notAssigned', lang)}
           disabled
         />
       </div>
 
       <button type="submit" className="btn btn-primary">
-        Update Profile
+        {getTranslation('updateProfile', lang)}
       </button>
     </form>
 
     <div className="settings-kyc-card">
       <h3 className="settings-section-title settings-no-margin">
         <User size={20} />
-        Verification
+        {getTranslation('verification', lang)}
       </h3>
       <p className="settings-kyc-subtitle">
-        Submit your Aadhaar or other government ID for account verification.
+        {getTranslation('verificationSubtitle', lang)}
       </p>
       <div className={`settings-kyc-status is-${kycStatus?.status || 'unverified'}`}>
-        Status: {kycStatus?.status || 'unverified'}
+        {getTranslation('statusLabel', lang)}: {kycStatus?.status || 'unverified'}
         {kycStatus?.rejectionReason && (
-          <span className="settings-kyc-reason">Reason: {kycStatus.rejectionReason}</span>
+          <span className="settings-kyc-reason">{getTranslation('reasonLabel', lang)}: {kycStatus.rejectionReason}</span>
         )}
       </div>
 
       <div className="settings-kyc-grid">
         <div className="form-group">
-          <label className="form-label">ID Type</label>
+          <label className="form-label">{getTranslation('idType', lang)}</label>
           <select
             className="form-input"
             value={kycForm.idType}
@@ -236,30 +227,30 @@ const ProfileTab = ({
           </select>
         </div>
         <div className="form-group">
-          <label className="form-label">ID Number (optional)</label>
+          <label className="form-label">{getTranslation('idNumberOptional', lang)}</label>
           <input
             type="text"
             className="form-input"
             value={kycForm.idNumber}
             onChange={(event) => onKycChange('idNumber', event.target.value)}
-            placeholder="Enter ID number"
+            placeholder={getTranslation('enterIdNumber', lang)}
           />
         </div>
         <div className="form-group settings-kyc-upload">
-          <label className="form-label">Upload Documents</label>
+          <label className="form-label">{getTranslation('uploadDocuments', lang)}</label>
           <div className="settings-kyc-upload-row">
             <label className="btn btn-secondary settings-kyc-upload-btn">
-              Choose Files
+              {getTranslation('chooseFiles', lang)}
               <input
                 type="file"
                 multiple
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
                 onChange={(event) => onKycDocuments(event.target.files)}
                 className="settings-kyc-file-input"
               />
             </label>
             <span className="settings-kyc-upload-text">
-              {kycForm.documents.length ? `${kycForm.documents.length} file(s) selected` : 'No files selected'}
+              {kycForm.documents.length ? `${kycForm.documents.length} ${getTranslation('filesSelected', lang)}` : getTranslation('noFilesSelected', lang)}
             </span>
           </div>
           {kycForm.documents.length > 0 && (
@@ -278,7 +269,7 @@ const ProfileTab = ({
         onClick={onSubmitKyc}
         disabled={kycSubmitting || kycStatus?.status === 'pending'}
       >
-        {kycSubmitting ? 'Submitting...' : (kycStatus?.status === 'pending' ? 'Verification Pending' : 'Submit Verification')}
+        {kycSubmitting ? getTranslation('submitting', lang) : (kycStatus?.status === 'pending' ? getTranslation('verificationPending', lang) : getTranslation('submitVerification', lang))}
       </button>
     </div>
   </div>

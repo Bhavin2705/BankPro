@@ -2,6 +2,8 @@ const express = require('express');
 const {
     getSettings,
     updatePreferences,
+    setupTwoFactor,
+    verifyTwoFactorSetup,
     updateTwoFactor,
     getLinkedAccounts,
     getSessions
@@ -18,6 +20,8 @@ router.use(apiLimiter);
 router.get('/', getSettings);
 // Preferences endpoint: payload elements (emailNotifications, smsNotifications, theme) strictly destructured; all injected parameters (isAdmin, userId, role) ignored.
 router.put('/preferences', settingsWriteLimiter, validateSettingsPreferencesUpdate, updatePreferences);
+router.post('/two-factor/setup', settingsWriteLimiter, setupTwoFactor);
+router.post('/two-factor/verify', settingsWriteLimiter, verifyTwoFactorSetup);
 router.put('/two-factor', settingsWriteLimiter, validateTwoFactorUpdate, updateTwoFactor);
 router.get('/linked-accounts', getLinkedAccounts);
 router.get('/sessions', getSessions);

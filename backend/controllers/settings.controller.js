@@ -83,6 +83,53 @@ const updatePreferences = async (req, res) => {
     res.status(200).json(responsePayload);
 };
 
+const setupTwoFactor = async (req, res) => {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        const error = new Error('User not found');
+        error.statusCode = 404;
+        throw error;
+    }
+    const secret = require('crypto').randomBytes(10).toString('hex').toUpperCase();
+    const otpauthUrl = `otpauth://totp/BankPro:${encodeURIComponent(user.email)}?secret=${secret}&issuer=BankPro`;
+
+    res.status(200).json({
+        success: true,
+        data: {
+            secret,
+            otpauthUrl
+        }
+    });
+};
+
+const verifyTwoFactorSetup = async (req, res) => {
+    const { code, secret } = req.body;
+    if (!code || !/^\d{6}$/.test(String(code).trim())) {
+        return res.status(400).json({ success: false, error: 'Please enter a valid 6-digit verification code' });
+    }
+
+    const updateData = {
+        'security.twoFactorEnabled': true,
+        'security.twoFactorSecret': secret || null
+    };
+
+    const user = await User.findByIdAndUpdate(req.user._id, updateData, { new: true });
+    await createInAppNotification({
+        userId: req.user._id,
+        type: 'security_alert',
+        title: 'Two-Factor Authentication Enabled',
+        message: 'Two-factor authentication was successfully enabled on your account.',
+        priority: 'high',
+        metadata: { category: 'security' }
+    });
+
+    res.status(200).json({
+        success: true,
+        data: { twoFactorEnabled: user.security?.twoFactorEnabled },
+        message: 'Two-factor authentication enabled successfully'
+    });
+};
+
 const updateTwoFactor = async (req, res) => {
     const { enable } = req.body;
     const updateData = { 'security.twoFactorEnabled': !!enable };
@@ -115,6 +162,8 @@ const getSessions = async (req, res) => {
 module.exports = {
     getSettings: asyncHandler(getSettings),
     updatePreferences: asyncHandler(updatePreferences),
+    setupTwoFactor: asyncHandler(setupTwoFactor),
+    verifyTwoFactorSetup: asyncHandler(verifyTwoFactorSetup),
     updateTwoFactor: asyncHandler(updateTwoFactor),
     getLinkedAccounts: asyncHandler(getLinkedAccounts),
     getSessions: asyncHandler(getSessions)

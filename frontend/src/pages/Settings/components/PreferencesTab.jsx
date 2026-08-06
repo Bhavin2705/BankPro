@@ -11,16 +11,6 @@ const LANGUAGE_SAMPLES = {
     welcome: 'BankPro में आपका स्वागत है! अपना बैलेंस, ट्रांसफर और सुरक्षा सेटिंग्स प्रबंधित करें।',
     nav: ['डैशबोर्ड', 'लेन-देन', 'कार्ड्स', 'सुरक्षा', 'सेटिंग्स'],
     tag: 'हिंदी (Hindi)'
-  },
-  es: {
-    welcome: '¡Bienvenido a BankPro! Gestione sus saldos, transferencias y seguridad.',
-    nav: ['Panel', 'Transacciones', 'Tarjetas', 'Seguridad', 'Ajustes'],
-    tag: 'Español (Spanish)'
-  },
-  fr: {
-    welcome: 'Bienvenue sur BankPro! Gérez vos soldes, virements et paramètres de sécurité.',
-    nav: ['Tableau de bord', 'Transactions', 'Cartes', 'Sécurité', 'Paramètres'],
-    tag: 'Français (French)'
   }
 };
 
@@ -96,8 +86,6 @@ const PreferencesTab = ({
             >
               <option value="en">English</option>
               <option value="hi">Hindi (हिंदी)</option>
-              <option value="es">Spanish (Español)</option>
-              <option value="fr">French (Français)</option>
             </select>
           </div>
 

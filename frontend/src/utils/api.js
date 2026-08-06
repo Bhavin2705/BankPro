@@ -299,6 +299,8 @@ export const api = {
     settings: {
         getAll: () => apiRequest('/settings'),
         updatePreferences: (data) => apiRequest('/settings/preferences', { method: 'PUT', body: JSON.stringify(data) }),
+        setupTwoFactor: () => apiRequest('/settings/two-factor/setup', { method: 'POST' }),
+        verifyTwoFactor: (data) => apiRequest('/settings/two-factor/verify', { method: 'POST', body: JSON.stringify(data) }),
         updateTwoFactor: (data) => apiRequest('/settings/two-factor', { method: 'PUT', body: JSON.stringify(data) }),
         getLinkedAccounts: () => apiRequest('/settings/linked-accounts'),
         getSessions: () => apiRequest('/settings/sessions')
