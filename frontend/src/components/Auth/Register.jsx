@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react';
+import { AlertCircle, ArrowRight, Building2, CheckCircle, Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react';
 import '../../styles/pages/Register.css';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -84,52 +84,74 @@ const Register = ({ onLogin, switchToLogin }) => {
     setEmailCheckInProgress(true);
     try {
       const response = await api.users.checkEmail(email);
-      setEmailExists(response.exists);
+      const exists = Boolean(response?.exists);
+      setEmailExists(exists);
+      if (exists) {
+        setError('This email address is already registered. Please sign in instead.');
+      } else {
+        setError((prev) =>
+          prev.includes('email address is already registered') || prev.includes('Email or phone number already registered')
+            ? ''
+            : prev
+        );
+      }
     } catch (err) {
-      
-      setError('Failed to verify email. Please try again.');
+      // silent check
     } finally {
       setEmailCheckInProgress(false);
     }
   };
 
   const checkPhoneExists = async (phone) => {
+    if (!phone || phone.length < 10) {
+      setPhoneExists(false);
+      setPhoneCheckInProgress(false);
+      return;
+    }
+
     setPhoneCheckInProgress(true);
     try {
       const response = await api.users.checkPhone(phone);
-      const canRegister = response.canRegister;
-      setPhoneExists(!canRegister);
+      const canRegister = response?.canRegister !== false;
+      const maxReached = !canRegister || (response?.count >= response?.maxAllowed);
 
-      if (!canRegister) {
-        setError(`Maximum ${response.maxAllowed} accounts allowed per phone number. Current count: ${response.count}`);
+      setPhoneExists(maxReached);
+
+      if (maxReached) {
+        setError(`Maximum ${response.maxAllowed || 3} accounts allowed per phone number. Please use a different phone number.`);
       } else {
-        if (error.includes('Maximum') && error.includes('accounts allowed')) {
-          setError('');
-        }
+        setError((prev) =>
+          prev.includes('accounts allowed per phone number') || prev.includes('Email or phone number already registered')
+            ? ''
+            : prev
+        );
       }
     } catch (err) {
-      
-      setError('Failed to verify phone number. Please try again.');
+      // silent check
     } finally {
       setPhoneCheckInProgress(false);
     }
   };
 
   useEffect(() => {
-    if (formData.email) {
+    if (formData.email && isValidEmail(formData.email)) {
       const delayDebounceFn = setTimeout(() => {
         checkEmailExists(formData.email);
-      }, 500);
+      }, 300);
       return () => clearTimeout(delayDebounceFn);
+    } else {
+      setEmailExists(false);
     }
   }, [formData.email]);
 
   useEffect(() => {
-    if (formData.phone) {
+    if (formData.phone && formData.phone.length === 10) {
       const delayDebounceFn = setTimeout(() => {
         checkPhoneExists(formData.phone);
-      }, 500);
+      }, 300);
       return () => clearTimeout(delayDebounceFn);
+    } else {
+      setPhoneExists(false);
     }
   }, [formData.phone]);
 
@@ -417,20 +439,38 @@ const Register = ({ onLogin, switchToLogin }) => {
                   <input
                     type="email"
                     name="email"
-                    className="auth-white-input w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                    className={`auth-white-input w-full pl-10 pr-10 py-3.5 border rounded-lg focus:ring-2 transition-colors duration-200 ${
+                      emailExists
+                        ? 'border-red-400 bg-red-50/20 focus:ring-red-400 focus:border-red-400'
+                        : isValidEmail(formData.email) && !emailCheckInProgress
+                          ? 'border-green-500 focus:ring-green-400 focus:border-green-500'
+                          : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     value={formData.email}
                     onChange={handleChange}
+                    onBlur={() => isValidEmail(formData.email) && checkEmailExists(formData.email)}
                     required
                     placeholder="Enter your email address"
                   />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    {emailCheckInProgress && (
+                      <span className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+                    )}
+                    {!emailCheckInProgress && emailExists && (
+                      <AlertCircle size={18} className="text-red-500" />
+                    )}
+                    {!emailCheckInProgress && !emailExists && isValidEmail(formData.email) && (
+                      <CheckCircle size={18} className="text-green-500" />
+                    )}
+                  </div>
                 </div>
                 {emailExists && (
-                  <p className="text-red-500 text-sm mt-2" aria-live="polite">
-                    This email is already registered. Please sign in instead.
+                  <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1 font-medium" aria-live="polite">
+                    <AlertCircle size={14} /> This email is already registered. Please sign in instead.
                   </p>
                 )}
                 {emailCheckInProgress && (
-                  <p className="text-blue-500 text-sm mt-2" aria-live="polite">
+                  <p className="text-blue-500 text-sm mt-1.5" aria-live="polite">
                     Checking email availability...
                   </p>
                 )}
@@ -444,23 +484,41 @@ const Register = ({ onLogin, switchToLogin }) => {
                   <input
                     type="tel"
                     name="phone"
-                    className="auth-white-input w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                    className={`auth-white-input w-full pl-10 pr-10 py-3.5 border rounded-lg focus:ring-2 transition-colors duration-200 ${
+                      phoneExists
+                        ? 'border-red-400 bg-red-50/20 focus:ring-red-400 focus:border-red-400'
+                        : formData.phone.length === 10 && !phoneCheckInProgress
+                          ? 'border-green-500 focus:ring-green-400 focus:border-green-500'
+                          : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     value={formData.phone}
                     onChange={handlePhoneChange}
+                    onBlur={() => formData.phone.length === 10 && checkPhoneExists(formData.phone)}
                     required
                     placeholder="Enter your phone number"
                     pattern="[0-9]{10}"
                     maxLength="10"
                     title="Please enter a 10-digit phone number"
                   />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    {phoneCheckInProgress && (
+                      <span className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+                    )}
+                    {!phoneCheckInProgress && phoneExists && (
+                      <AlertCircle size={18} className="text-red-500" />
+                    )}
+                    {!phoneCheckInProgress && !phoneExists && formData.phone.length === 10 && (
+                      <CheckCircle size={18} className="text-green-500" />
+                    )}
+                  </div>
                 </div>
                 {phoneExists && (
-                  <p className="text-red-500 text-sm mt-2" aria-live="polite">
-                    Maximum accounts allowed per phone number reached. Please use a different phone number.
+                  <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1 font-medium" aria-live="polite">
+                    <AlertCircle size={14} /> Maximum accounts allowed per phone number reached.
                   </p>
                 )}
                 {phoneCheckInProgress && (
-                  <p className="text-blue-500 text-sm mt-2" aria-live="polite">
+                  <p className="text-blue-500 text-sm mt-1.5" aria-live="polite">
                     Checking phone number availability...
                   </p>
                 )}
