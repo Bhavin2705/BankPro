@@ -1,7 +1,9 @@
+import { createPortal } from 'react-dom';
+
 export default function PinModal({ show, pinError, pendingTransaction, pin, setPin, pinVerifying, onCancel, onConfirm }) {
   if (!show) return null;
 
-  return (
+  return createPortal(
     <div
       className="transactions-pin-overlay"
       style={{
@@ -10,22 +12,27 @@ export default function PinModal({ show, pinError, pendingTransaction, pin, setP
         left: 0,
         right: 0,
         bottom: 0,
+        width: '100vw',
+        height: '100vh',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(4px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1700
+        zIndex: 99999
       }}
     >
       <div
         className="transactions-pin-modal"
         style={{
-          backgroundColor: 'white',
+          backgroundColor: 'var(--card-bg, #ffffff)',
+          color: 'var(--text-color, #0f172a)',
           borderRadius: '8px',
           padding: '2rem',
           maxWidth: '400px',
           width: '90%',
-          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.25)',
+          border: '1px solid var(--border-color, #e2e8f0)'
         }}
       >
         <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.5rem' }}>
@@ -110,6 +117,7 @@ export default function PinModal({ show, pinError, pendingTransaction, pin, setP
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

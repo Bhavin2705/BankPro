@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Lock, Shield, QrCode, CheckCircle2, AlertCircle, X, Copy, Check, Key, ArrowRight, Loader2 } from 'lucide-react';
 import QRCode from 'qrcode';
@@ -168,16 +169,21 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
       </div>
 
       {/* 2FA Setup Modal Wizard */}
-      {show2FaModal && twoFactorSetupData && (
+      {show2FaModal && twoFactorSetupData && createPortal(
         <div style={{
           position: 'fixed',
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
           backgroundColor: 'rgba(0, 0, 0, 0.65)',
           backdropFilter: 'blur(6px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 9999,
+          zIndex: 99999,
           padding: '1.5rem'
         }}>
           <div style={{
@@ -347,7 +353,8 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Link to Master Security Page */}

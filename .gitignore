@@ -40,3 +40,5 @@ backend/uploads/profile/*
 *.tmp
 *.temp
 bank-management-system.zip
+
+.vercel
