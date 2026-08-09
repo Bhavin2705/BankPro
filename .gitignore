@@ -42,3 +42,4 @@ backend/uploads/profile/*
 bank-management-system.zip
 
 .vercel
+backend/scripts/resetDatabase.js
