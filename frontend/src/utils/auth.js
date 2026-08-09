@@ -48,6 +48,8 @@ const readStoredUser = () => {
   } catch {
     return null;
   }
+};
+
 export const isPageReload = () => {
   if (typeof window === 'undefined') return false;
   try {
