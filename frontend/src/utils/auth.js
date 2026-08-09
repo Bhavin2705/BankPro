@@ -157,7 +157,9 @@ export const logout = async () => {
       new Promise((_, reject) => setTimeout(() => reject(new Error('Logout timeout')), 3000)),
     ]);
   } catch (error) {
-    console.warn('Logout API error:', error);
+    if (error?.status !== 401 && error?.response?.status !== 401 && error?.message !== 'Not authorized to access this route') {
+      console.warn('Logout API error:', error);
+    }
   } finally {
     try {
       clearAuthToken();

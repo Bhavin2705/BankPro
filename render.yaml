@@ -12,9 +12,9 @@ services:
       - key: COOKIE_SAME_SITE
         value: None
       - key: FRONTEND_URL
-        value: https://frontend-theta-six-54.vercel.app
+        value: https://bankpro.vercel.app
       - key: FRONTEND_URLS
-        value: https://frontend-theta-six-54.vercel.app,http://localhost:5173
+        value: https://bankpro.vercel.app,https://frontend-theta-six-54.vercel.app,http://localhost:5173
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
