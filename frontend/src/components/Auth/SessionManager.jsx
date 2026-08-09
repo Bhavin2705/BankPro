@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Clock } from 'lucide-react';
 import { api } from '../../utils/api';
 
-const INACTIVITY_LIMIT_MS = 15 * 60 * 1000; // 15 minutes
+const INACTIVITY_LIMIT_MS = 10 * 60 * 1000; // 10 minutes
 const WARNING_BEFORE_LOGOUT_MS = 60 * 1000; // 60 seconds warning
-const REFRESH_INTERVAL_MS = 10 * 60 * 1000; // Background refresh every 10 mins
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // Background refresh every 5 mins
 
 export const SessionManager = ({ user, onLogout }) => {
   const [showWarning, setShowWarning] = useState(false);
@@ -106,11 +107,11 @@ export const SessionManager = ({ user, onLogout }) => {
     onLogout('manual');
   };
 
-  return (
+  return createPortal(
     <div style={{
       position: 'fixed',
       inset: 0,
-      zIndex: 9999,
+      zIndex: 999999,
       backgroundColor: 'rgba(0, 0, 0, 0.65)',
       backdropFilter: 'blur(6px)',
       display: 'flex',
@@ -166,7 +167,8 @@ export const SessionManager = ({ user, onLogout }) => {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
