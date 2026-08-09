@@ -15,6 +15,7 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
+  const [modalError, setModalError] = useState(null);
   const [settingUp2Fa, setSettingUp2Fa] = useState(false);
   const [verifying2Fa, setVerifying2Fa] = useState(false);
   const [disabling2Fa, setDisabling2Fa] = useState(false);
@@ -22,6 +23,7 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
   // Generate QR code locally whenever 2FA modal opens
   useEffect(() => {
     if (show2FaModal && twoFactorSetupData) {
+      setModalError(null);
       const url = twoFactorSetupData.otpauthUrl || `otpauth://totp/BankPro?secret=${twoFactorSetupData.secret}&issuer=BankPro`;
       QRCode.toDataURL(url, {
         width: 240,
@@ -42,6 +44,7 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
   // Start 2FA Setup Flow
   const handleStart2FaSetup = async () => {
     setSettingUp2Fa(true);
+    setModalError(null);
     try {
       const res = await api.settings.setupTwoFactor();
       if (res?.success && res?.data) {
@@ -61,15 +64,20 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
   // Verify and Confirm 2FA
   const handleVerify2FaCode = async (e) => {
     e.preventDefault();
-    if (!verificationCode || !/^\d{6}$/.test(verificationCode.trim())) {
-      showError('Please enter a valid 6-digit code');
+    setModalError(null);
+
+    const cleanCode = verificationCode.trim();
+    if (!cleanCode || !/^\d{6}$/.test(cleanCode)) {
+      const msg = 'Please enter a valid 6-digit verification code from your authenticator app';
+      setModalError(msg);
+      showError(msg);
       return;
     }
 
     setVerifying2Fa(true);
     try {
       const res = await api.settings.verifyTwoFactor({
-        code: verificationCode.trim(),
+        code: cleanCode,
         secret: twoFactorSetupData?.secret
       });
 
@@ -78,12 +86,17 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
         setShow2FaModal(false);
         setTwoFactorSetupData(null);
         setVerificationCode('');
+        setModalError(null);
         if (onTwoFactorChange) onTwoFactorChange(true);
       } else {
-        showError(res?.error || 'Verification failed. Please check the code.');
+        const msg = res?.error || 'Invalid 6-digit code. Please check your authenticator app (Google Authenticator, Authy, etc.) and try again.';
+        setModalError(msg);
+        showError(msg);
       }
     } catch (err) {
-      showError(err.message || 'Verification failed. Please try again.');
+      const msg = err.message || 'Invalid 6-digit code. Please check your authenticator app (Google Authenticator, Authy, etc.) and try again.';
+      setModalError(msg);
+      showError(msg);
     } finally {
       setVerifying2Fa(false);
     }
@@ -312,6 +325,26 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
               </div>
             </div>
 
+            {modalError && (
+              <div style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#dc2626',
+                padding: '0.75rem 1rem',
+                borderRadius: '0.625rem',
+                marginBottom: '1.25rem',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.625rem',
+                lineHeight: 1.4
+              }}>
+                <AlertCircle size={20} style={{ flexShrink: 0, color: '#ef4444' }} />
+                <span>{modalError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleVerify2FaCode}>
               <div className="form-group" style={{ marginBottom: '1.25rem' }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block' }}>
@@ -321,7 +354,10 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
                   type="text"
                   className="form-input"
                   value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onChange={(e) => {
+                    setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                    if (modalError) setModalError(null);
+                  }}
                   placeholder="000000"
                   maxLength={6}
                   style={{
