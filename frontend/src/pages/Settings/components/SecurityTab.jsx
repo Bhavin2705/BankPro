@@ -70,7 +70,6 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
     if (!cleanCode || !/^\d{6}$/.test(cleanCode)) {
       const msg = 'Please enter a valid 6-digit verification code from your authenticator app';
       setModalError(msg);
-      showError(msg);
       return;
     }
 
@@ -91,12 +90,10 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
       } else {
         const msg = res?.error || 'Invalid 6-digit code. Please check your authenticator app (Google Authenticator, Authy, etc.) and try again.';
         setModalError(msg);
-        showError(msg);
       }
     } catch (err) {
       const msg = err.message || 'Invalid 6-digit code. Please check your authenticator app (Google Authenticator, Authy, etc.) and try again.';
       setModalError(msg);
-      showError(msg);
     } finally {
       setVerifying2Fa(false);
     }

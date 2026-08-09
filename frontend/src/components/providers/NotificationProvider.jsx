@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+import { createPortal } from 'react-dom';
 import { AlertCircle, CheckCircle, Info, X, XCircle } from 'lucide-react';
 import '../../styles/pages/NotificationProvider.css';
 import { createContext, useCallback, useContext, useState } from 'react';
@@ -79,7 +79,7 @@ const NotificationContainer = () => {
 
   if (notifications.length === 0) return null;
 
-  return (
+  return createPortal(
     <div className="toast-notification-container">
       {notifications.map(notification => (
         <NotificationItem
@@ -88,7 +88,8 @@ const NotificationContainer = () => {
           onRemove={removeNotification}
         />
       ))}
-    </div>
+    </div>,
+    document.body
   );
 };
 
