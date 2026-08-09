@@ -2,10 +2,20 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://bankpro-bac
 const ACCESS_TOKEN_KEY = 'bank_auth_access_token';
 let inMemoryAccessToken = null;
 
+export const clearLegacyLocalStorage = () => {
+    if (typeof window === 'undefined') return;
+    try {
+        window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+        window.localStorage.removeItem('bank_auth_user');
+    } catch {
+        // no-op
+    }
+};
+
 const readSessionValue = (key) => {
     if (typeof window === 'undefined') return null;
     try {
-        return window.localStorage.getItem(key);
+        return window.sessionStorage.getItem(key);
     } catch {
         return null;
     }
@@ -15,10 +25,11 @@ const writeSessionValue = (key, value) => {
     if (typeof window === 'undefined') return;
     try {
         if (!value) {
+            window.sessionStorage.removeItem(key);
             window.localStorage.removeItem(key);
             return;
         }
-        window.localStorage.setItem(key, value);
+        window.sessionStorage.setItem(key, value);
     } catch {
         // no-op
     }

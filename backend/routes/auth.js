@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, loginWithAccount, logout, getMe, updateDetails, updatePassword, forgotPassword, resetPassword, refreshToken, verifyResetToken, getSecurityQuestionsForReset, resetPasswordWithSecurityQuestions } = require('../services/auth.service');
+const { register, login, loginWithAccount, logout, getMe, updateDetails, updatePassword, forgotPassword, resetPassword, refreshToken, verifyResetToken, getSecurityQuestionsForReset, resetPasswordWithSecurityQuestions } = require('../controllers/auth.controller');
 const { protect } = require('../middleware/auth');
 const { validateUserRegistration, validateUserLogin, validatePasswordReset, validatePasswordResetToken, validatePasswordUpdate, validateProfileUpdate } = require('../middleware/validation');
 const { apiLimiter, authLimiter, passwordResetLimiter } = require('../middleware/rateLimit');

@@ -1,7 +1,8 @@
 const Transaction = require('../models/Transaction');
 const Card = require('../models/Card');
 const User = require('../models/User');
-const notificationService = require('./notification.service');
+const emailService = require('./email');
+const { createInAppNotification } = require('../utils/notifications');
 const { roundTwo, withTransactionOrFallback } = require('../helpers/transaction.helpers');
 const { createServiceError } = require('./service-error');
 
@@ -49,15 +50,16 @@ const createTransaction = async ({ userId, body }) => {
         // Do NOT credit the recipient here to avoid double-credit bugs.
     });
 
-    const createdNotif = await notificationService.createNotification({
+    const createdNotif = await createInAppNotification({
         userId, type: 'transaction', title: type === 'credit' ? 'Deposit Successful' : 'Withdrawal Successful',
         message: `Rs ${numericAmount.toLocaleString('en-IN')} ${type === 'credit' ? 'credited to' : 'debited from'} your account.`,
         relatedId: transaction._id, relatedModel: 'Transaction', metadata: { amount: numericAmount, category: finalCategory }
     });
 
-    const emailSent = notificationService.sendTransactionEmailIfEnabled({
-        user, details: { type, amount: numericAmount, currency: 'INR', description: finalDesc, timestamp: transaction.createdAt }
-    });
+    let emailSent = false;
+    if (user?.preferences?.notifications?.email !== false) {
+        emailService.sendTransactionNotification(user.email, { type, amount: numericAmount, currency: 'INR', description: finalDesc, timestamp: transaction.createdAt }).catch(() => {});
+    }
 
     const txData = transaction.toObject();
     txData.delivery = { notificationCreated: !!createdNotif, emailSent };

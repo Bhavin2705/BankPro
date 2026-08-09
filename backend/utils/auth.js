@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const redis = require('../config/redis');
 
 const JWT_EXPIRE_DAYS = parseInt(process.env.JWT_EXPIRE_DAYS, 10) || 30;
 const JWT_REFRESH_EXPIRE_DAYS = parseInt(process.env.JWT_REFRESH_EXPIRE_DAYS, 10) || 365;
@@ -11,10 +12,9 @@ const sameSite = ['lax', 'strict', 'none'].includes(String(process.env.COOKIE_SA
 const generateToken = id => jwt.sign({ id, tokenType: 'access' }, getJwtSecret(), { expiresIn: process.env.JWT_EXPIRE || `${JWT_EXPIRE_DAYS}d` });
 const generateRefreshToken = id => jwt.sign({ id, tokenType: 'refresh' }, getJwtRefreshSecret(), { expiresIn: process.env.JWT_REFRESH_EXPIRE || `${JWT_REFRESH_EXPIRE_DAYS}d` });
 
-const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? sameSite : 'Lax', maxAge: JWT_EXPIRE_DAYS * 86400000 };
-const refreshCookieOptions = { ...cookieOptions, maxAge: JWT_REFRESH_EXPIRE_DAYS * 86400000 };
-const clearTokenCookieOptions = (({ maxAge, ...c }) => c)(cookieOptions);
-const clearRefreshCookieOptions = (({ maxAge, ...c }) => c)(refreshCookieOptions);
+const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? sameSite : 'Lax' };
+const clearTokenCookieOptions = { ...cookieOptions };
+const clearRefreshCookieOptions = { ...cookieOptions };
 
 const hashTwoFactorOtp = otp => crypto.createHash('sha256').update(String(otp)).digest('hex');
 
@@ -35,33 +35,16 @@ const appendLoginHistoryEntry = (user, req) => {
     const hist = Array.isArray(user.clientData.loginHistory) ? user.clientData.loginHistory : [];
 
     const now = new Date();
-    // Mark previous open session as ended at current time or max 1 hr after login
     const updatedHist = hist.map(entry => {
         const entryTime = new Date(entry.loginTime || entry.timestamp || now);
         if (!entry.logoutTime) {
             const sessionEnd = new Date(Math.min(now.getTime(), entryTime.getTime() + 3600000));
-            return {
-                ...entry,
-                loginTime: entryTime,
-                lastActiveTime: sessionEnd,
-                logoutTime: sessionEnd
-            };
+            return { ...entry, loginTime: entryTime, lastActiveTime: sessionEnd, logoutTime: sessionEnd };
         }
-        return {
-            ...entry,
-            loginTime: entryTime
-        };
+        return { ...entry, loginTime: entryTime };
     });
 
-    const newEntry = {
-        timestamp: now,
-        loginTime: now,
-        lastActiveTime: now,
-        logoutTime: null,
-        ip,
-        device: req.headers['user-agent'] || 'Unknown',
-        status: 'SUCCESS'
-    };
+    const newEntry = { timestamp: now, loginTime: now, lastActiveTime: now, logoutTime: null, ip, device: req.headers['user-agent'] || 'Unknown', status: 'SUCCESS' };
     user.clientData.loginHistory = [...updatedHist, newEntry].slice(-15);
 };
 
@@ -80,7 +63,10 @@ const sanitizeLoginHistory = (history) => {
     });
 };
 
-const setAuthCookies = (res, token, refreshToken) => { res.cookie('token', token, cookieOptions); res.cookie('refreshToken', refreshToken, refreshCookieOptions); };
+const setAuthCookies = (res, token, refreshToken) => {
+    res.cookie('token', token, cookieOptions);
+    res.cookie('refreshToken', refreshToken, clearRefreshCookieOptions);
+};
 
 const buildAuthenticatedUserResponse = u => ({
     _id: u._id,
@@ -102,8 +88,6 @@ const buildAuthenticatedUserResponse = u => ({
     }
 });
 
-const redis = require('../config/redis');
-
 const blacklistToken = async (token, ttlSeconds = JWT_EXPIRE_DAYS * 86400) => {
     if (!token) return;
     try {
@@ -123,4 +107,19 @@ const isTokenBlacklisted = async (token) => {
     }
 };
 
-module.exports = { generateToken, generateRefreshToken, getJwtRefreshSecret, cookieOptions, clearTokenCookieOptions, clearRefreshCookieOptions, initiateTwoFactorLogin, verifyTwoFactorOtp, appendLoginHistoryEntry, setAuthCookies, buildAuthenticatedUserResponse, blacklistToken, isTokenBlacklisted };
+module.exports = {
+    generateToken,
+    generateRefreshToken,
+    getJwtSecret,
+    getJwtRefreshSecret,
+    cookieOptions,
+    clearTokenCookieOptions,
+    clearRefreshCookieOptions,
+    initiateTwoFactorLogin,
+    verifyTwoFactorOtp,
+    appendLoginHistoryEntry,
+    setAuthCookies,
+    buildAuthenticatedUserResponse,
+    blacklistToken,
+    isTokenBlacklisted
+};

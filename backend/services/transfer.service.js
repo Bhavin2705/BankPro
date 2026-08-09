@@ -1,6 +1,7 @@
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
-const notificationService = require('./notification.service');
+const emailService = require('./email');
+const { createInAppNotification } = require('../utils/notifications');
 const { roundTwo, withTransactionOrFallback, findRecipientByAccountOrPhone, getTransferMeta } = require('../helpers/transaction.helpers');
 const { createServiceError } = require('./service-error');
 
@@ -122,29 +123,29 @@ const transferMoney = async ({ userId, body }) => {
         }
     });
 
-    const senderNotif = await notificationService.createNotification({
+    const senderNotif = await createInAppNotification({
         userId, type: 'transaction', title: 'Transfer Sent',
         message: `Rs ${amt.toLocaleString('en-IN')} transferred ${recipient ? `to ${recipient.name}` : 'to external account'}.`,
         relatedId: senderTx._id, relatedModel: 'Transaction', metadata: { amount: amt, category: 'transfer' }
     });
 
-    const senderEmail = notificationService.sendTransactionEmailIfEnabled({
-        user: sender, details: { type: 'debit', amount: amt, currency: 'INR', description: senderTx.description, timestamp: senderTx.createdAt }
-    });
+    let senderEmail = false;
+    if (sender?.preferences?.notifications?.email !== false) {
+        emailService.sendTransactionNotification(sender.email, { type: 'debit', amount: amt, currency: 'INR', description: senderTx.description, timestamp: senderTx.createdAt }).catch(() => {});
+        senderEmail = true;
+    }
 
     let recNotif = false, recEmail = false;
     if (isInternalTransfer && recipient) {
-        recNotif = await notificationService.createNotification({
+        recNotif = await createInAppNotification({
             userId: recipient._id, type: 'transaction', title: 'Money Received',
             message: `Rs ${amt.toLocaleString('en-IN')} received from ${sender.name}.`,
             relatedId: recipientTxId || senderTx._id, relatedModel: 'Transaction', metadata: { amount: amt, category: 'transfer' }
         });
 
         if (recipientEmail) {
-            recEmail = notificationService.sendTransactionEmailIfEnabled({
-                user: { email: recipientEmail, preferences: { notifications: { email: true } } },
-                details: { type: 'credit', amount: amt, currency: 'INR', description: `Transfer from ${sender.name}`, timestamp: recipientTxCreatedAt || new Date() }
-            });
+            emailService.sendTransactionNotification(recipientEmail, { type: 'credit', amount: amt, currency: 'INR', description: `Transfer from ${sender.name}`, timestamp: recipientTxCreatedAt || new Date() }).catch(() => {});
+            recEmail = true;
         }
     }
 

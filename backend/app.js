@@ -39,7 +39,9 @@ const createApp = () => {
         const dbStatus = dbState === 1 ? 'connected' : dbState === 2 ? 'connecting' : 'disconnected';
 
         res.status(200).json({
+            success: true,
             status: 'ok',
+            message: 'Bank Management API is running',
             uptime: Math.floor(process.uptime()),
             timestamp: new Date().toISOString(),
             environment: config.env,

@@ -1,1 +1,0 @@
-exports.USER_STATUSES = ['active', 'inactive', 'suspended'];

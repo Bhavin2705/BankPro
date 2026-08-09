@@ -10,47 +10,65 @@ export const SessionManager = ({ user, onLogout }) => {
   const [showWarning, setShowWarning] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(60);
   const lastActivityRef = useRef(Date.now());
-  const countdownIntervalRef = useRef(null);
+  const showWarningRef = useRef(showWarning);
+
+  showWarningRef.current = showWarning;
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setShowWarning(false);
+      setSecondsRemaining(60);
+      return;
+    }
+
+    lastActivityRef.current = Date.now();
 
     const resetActivity = () => {
-      lastActivityRef.current = Date.now();
-      if (showWarning) {
+      const now = Date.now();
+      const idleTime = now - lastActivityRef.current;
+
+      if (idleTime >= INACTIVITY_LIMIT_MS) {
         setShowWarning(false);
-        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        onLogout('inactivity');
+        return;
+      }
+
+      lastActivityRef.current = now;
+      if (showWarningRef.current) {
+        setShowWarning(false);
+      }
+    };
+
+    const checkInactivity = () => {
+      const now = Date.now();
+      const idleTime = now - lastActivityRef.current;
+      const warningThreshold = INACTIVITY_LIMIT_MS - WARNING_BEFORE_LOGOUT_MS;
+
+      if (idleTime >= INACTIVITY_LIMIT_MS) {
+        setShowWarning(false);
+        onLogout('inactivity');
+      } else if (idleTime >= warningThreshold) {
+        const remaining = Math.max(1, Math.ceil((INACTIVITY_LIMIT_MS - idleTime) / 1000));
+        setSecondsRemaining(remaining);
+        if (!showWarningRef.current) {
+          setShowWarning(true);
+        }
+      } else if (showWarningRef.current) {
+        setShowWarning(false);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkInactivity();
       }
     };
 
     const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'];
     events.forEach((event) => window.addEventListener(event, resetActivity, { passive: true }));
+    window.addEventListener('visibilitychange', handleVisibilityChange);
 
-    const inactivityTimer = setInterval(() => {
-      const idleTime = Date.now() - lastActivityRef.current;
-      const warningThreshold = INACTIVITY_LIMIT_MS - WARNING_BEFORE_LOGOUT_MS;
-
-      if (idleTime >= INACTIVITY_LIMIT_MS) {
-        clearInterval(inactivityTimer);
-        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-        onLogout('inactivity');
-      } else if (idleTime >= warningThreshold && !showWarning) {
-        setShowWarning(true);
-        setSecondsRemaining(Math.ceil((INACTIVITY_LIMIT_MS - idleTime) / 1000));
-
-        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = setInterval(() => {
-          setSecondsRemaining((prev) => {
-            if (prev <= 1) {
-              clearInterval(countdownIntervalRef.current);
-              onLogout('inactivity');
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      }
-    }, 5000);
+    const inactivityTimer = setInterval(checkInactivity, 1000);
 
     const refreshTimer = setInterval(async () => {
       const idleTime = Date.now() - lastActivityRef.current;
@@ -65,13 +83,28 @@ export const SessionManager = ({ user, onLogout }) => {
 
     return () => {
       events.forEach((event) => window.removeEventListener(event, resetActivity));
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(inactivityTimer);
       clearInterval(refreshTimer);
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     };
-  }, [user, onLogout, showWarning]);
+  }, [user, onLogout]);
 
-  if (!showWarning) return null;
+  if (!user || !showWarning) return null;
+
+  const handleStayLoggedIn = async () => {
+    lastActivityRef.current = Date.now();
+    setShowWarning(false);
+    try {
+      await api.auth.refreshToken();
+    } catch {
+      // Silent refresh error ignore
+    }
+  };
+
+  const handleLogoutNow = () => {
+    setShowWarning(false);
+    onLogout('manual');
+  };
 
   return (
     <div style={{
@@ -118,18 +151,14 @@ export const SessionManager = ({ user, onLogout }) => {
         </p>
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
           <button
-            onClick={() => onLogout('manual')}
+            onClick={handleLogoutNow}
             className="btn btn-secondary"
             style={{ flex: 1, padding: '0.625rem 1rem' }}
           >
             Logout Now
           </button>
           <button
-            onClick={() => {
-              lastActivityRef.current = Date.now();
-              setShowWarning(false);
-              if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-            }}
+            onClick={handleStayLoggedIn}
             className="btn btn-primary"
             style={{ flex: 1, padding: '0.625rem 1rem' }}
           >
@@ -142,3 +171,4 @@ export const SessionManager = ({ user, onLogout }) => {
 };
 
 export default SessionManager;
+

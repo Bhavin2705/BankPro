@@ -184,7 +184,7 @@ export default function Transactions({ user, onUserUpdate }) {
       onUserUpdate({ ...user, balance: newBalance });
       await loadTransactions();
 
-      localStorage.setItem('pinRequiredForTransactions', 'true');
+      sessionStorage.setItem('pinRequiredForTransactions', 'true');
       resetForms();
       return true;
     } catch (err) {

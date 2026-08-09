@@ -37,10 +37,12 @@ const handleAccountSelectionError = (error) => {
   return null;
 };
 
+export const SESSION_ACTIVE_KEY = 'bank_session_active';
+
 const readStoredUser = () => {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(AUTH_KEY);
+    const raw = window.sessionStorage.getItem(AUTH_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -48,24 +50,40 @@ const readStoredUser = () => {
   }
 };
 
-const writeStoredUser = (user) => {
+export const isSessionActive = () => {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem(SESSION_ACTIVE_KEY) === 'true' || window.sessionStorage.getItem(AUTH_KEY) !== null;
+  } catch {
+    return false;
+  }
+};
+
+export const writeStoredUser = (user) => {
   if (typeof window === 'undefined') return null;
   try {
     if (!user) {
+      window.sessionStorage.removeItem(AUTH_KEY);
+      window.sessionStorage.removeItem(SESSION_ACTIVE_KEY);
       window.localStorage.removeItem(AUTH_KEY);
+      window.localStorage.removeItem(SESSION_ACTIVE_KEY);
       return null;
     }
-    window.localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+    window.sessionStorage.setItem(AUTH_KEY, JSON.stringify(user));
+    window.sessionStorage.setItem(SESSION_ACTIVE_KEY, 'true');
     return user;
   } catch {
     return null;
   }
 };
 
-const clearStoredUser = () => {
+export const clearStoredUser = () => {
   if (typeof window === 'undefined') return;
   try {
+    window.sessionStorage.removeItem(AUTH_KEY);
+    window.sessionStorage.removeItem(SESSION_ACTIVE_KEY);
     window.localStorage.removeItem(AUTH_KEY);
+    window.localStorage.removeItem(SESSION_ACTIVE_KEY);
   } catch {
     // no-op
   }
@@ -145,7 +163,7 @@ export const updateUserBalance = async (userId, newBalance) => {
   try {
     const currentUser = getCurrentUser();
     if (!currentUser) {
-      console.warn('No current user found in localStorage');
+      console.warn('No current user found in sessionStorage');
       return { balance: newBalance };
     }
 

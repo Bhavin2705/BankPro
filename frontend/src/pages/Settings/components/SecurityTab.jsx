@@ -1,178 +1,42 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Shield, QrCode, CheckCircle2, AlertCircle, X, Copy, Key, ArrowRight } from 'lucide-react';
+import { Lock, Shield, QrCode, CheckCircle2, AlertCircle, X, Copy, Check, Key, ArrowRight, Loader2 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { useNotification } from '../../../components/providers/NotificationProvider';
 import api from '../../../utils/api';
 
 const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
   const { showSuccess, showError } = useNotification();
-  const [secTab, setSecTab] = useState('password');
-
-  // Password state
-  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [updatingPassword, setUpdatingPassword] = useState(false);
-
-  // Account PIN state
-  const [accountPinForm, setAccountPinForm] = useState({ currentPin: '', newPin: '', confirmPin: '' });
-  const [showCurrentAccountPin, setShowCurrentAccountPin] = useState(false);
-  const [showNewAccountPin, setShowNewAccountPin] = useState(false);
-  const [showConfirmAccountPin, setShowConfirmAccountPin] = useState(false);
-  const [updatingAccountPin, setUpdatingAccountPin] = useState(false);
-
-  // Card PIN state
-  const [cards, setCards] = useState([]);
-  const [selectedCardId, setSelectedCardId] = useState('');
-  const [cardPinForm, setCardPinForm] = useState({ currentPin: '', newPin: '', confirmPin: '' });
-  const [showCurrentCardPin, setShowCurrentCardPin] = useState(false);
-  const [showNewCardPin, setShowNewCardPin] = useState(false);
-  const [showConfirmCardPin, setShowConfirmCardPin] = useState(false);
-  const [updatingCardPin, setUpdatingCardPin] = useState(false);
 
   // 2FA Wizard Modal State
   const [show2FaModal, setShow2FaModal] = useState(false);
   const [twoFactorSetupData, setTwoFactorSetupData] = useState(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [copied, setCopied] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [settingUp2Fa, setSettingUp2Fa] = useState(false);
   const [verifying2Fa, setVerifying2Fa] = useState(false);
   const [disabling2Fa, setDisabling2Fa] = useState(false);
 
-  const loadCards = useCallback(async () => {
-    try {
-      const res = await api.cards.getAll();
-      if (res?.success && Array.isArray(res.data)) {
-        setCards(res.data);
-        if (res.data.length > 0 && !selectedCardId) {
-          setSelectedCardId(res.data[0]._id || res.data[0].id);
-        }
-      }
-    } catch {
-      setCards([]);
-    }
-  }, [selectedCardId]);
-
+  // Generate QR code locally whenever 2FA modal opens
   useEffect(() => {
-    if (secTab === 'card-pin') {
-      loadCards();
+    if (show2FaModal && twoFactorSetupData) {
+      const url = twoFactorSetupData.otpauthUrl || `otpauth://totp/BankPro?secret=${twoFactorSetupData.secret}&issuer=BankPro`;
+      QRCode.toDataURL(url, {
+        width: 240,
+        margin: 2,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff'
+        }
+      })
+        .then((dataUrl) => setQrCodeUrl(dataUrl))
+        .catch(() => setQrCodeUrl(''));
+    } else {
+      setQrCodeUrl('');
+      setCopied(false);
     }
-  }, [secTab, loadCards]);
-
-  // Password Submit Handler
-  const handlePasswordSubmit = async (e) => {
-    e.preventDefault();
-    if (updatingPassword) return;
-
-    if (!passwordForm.currentPassword) {
-      showError('Current password is required');
-      return;
-    }
-    if (passwordForm.newPassword.length < 8) {
-      showError('New password must be at least 8 characters long');
-      return;
-    }
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      showError('New passwords do not match');
-      return;
-    }
-
-    setUpdatingPassword(true);
-    try {
-      const result = await api.auth.updatePassword({
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword
-      });
-      if (result?.success) {
-        showSuccess(result.message || 'Password updated successfully!');
-        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      } else {
-        showError(result?.error || 'Password update failed');
-      }
-    } catch (err) {
-      showError(err.message || 'Failed to update password');
-    } finally {
-      setUpdatingPassword(false);
-    }
-  };
-
-  // Account PIN Submit Handler
-  const handleAccountPinSubmit = async (e) => {
-    e.preventDefault();
-    if (updatingAccountPin) return;
-
-    if (!/^\d{4,6}$/.test(accountPinForm.currentPin)) {
-      showError('Current Account PIN must be 4-6 digits');
-      return;
-    }
-    if (!/^\d{4,6}$/.test(accountPinForm.newPin)) {
-      showError('New Account PIN must be 4-6 digits');
-      return;
-    }
-    if (accountPinForm.newPin !== accountPinForm.confirmPin) {
-      showError('Account PINs do not match');
-      return;
-    }
-
-    setUpdatingAccountPin(true);
-    try {
-      const result = await api.users.updatePin({
-        currentPin: accountPinForm.currentPin,
-        newPin: accountPinForm.newPin
-      });
-      if (result?.success) {
-        showSuccess(result.message || 'Account PIN updated successfully!');
-        setAccountPinForm({ currentPin: '', newPin: '', confirmPin: '' });
-      } else {
-        showError(result?.error || 'Failed to update Account PIN');
-      }
-    } catch (err) {
-      showError(err.message || 'Failed to update Account PIN');
-    } finally {
-      setUpdatingAccountPin(false);
-    }
-  };
-
-  // Card PIN Submit Handler
-  const handleCardPinSubmit = async (e) => {
-    e.preventDefault();
-    if (updatingCardPin) return;
-
-    if (!selectedCardId) {
-      showError('Please select a card');
-      return;
-    }
-    if (!/^\d{4,6}$/.test(cardPinForm.currentPin)) {
-      showError('Current Card PIN must be 4-6 digits');
-      return;
-    }
-    if (!/^\d{4,6}$/.test(cardPinForm.newPin)) {
-      showError('New Card PIN must be 4-6 digits');
-      return;
-    }
-    if (cardPinForm.newPin !== cardPinForm.confirmPin) {
-      showError('Card PINs do not match');
-      return;
-    }
-
-    setUpdatingCardPin(true);
-    try {
-      const result = await api.cards.updatePin(selectedCardId, {
-        currentPin: cardPinForm.currentPin,
-        newPin: cardPinForm.newPin
-      });
-      if (result?.success) {
-        showSuccess(result.message || 'Card PIN updated successfully!');
-        setCardPinForm({ currentPin: '', newPin: '', confirmPin: '' });
-      } else {
-        showError(result?.error || 'Failed to update Card PIN');
-      }
-    } catch (err) {
-      showError(err.message || 'Failed to update Card PIN');
-    } finally {
-      setUpdatingCardPin(false);
-    }
-  };
+  }, [show2FaModal, twoFactorSetupData]);
 
   // Start 2FA Setup Flow
   const handleStart2FaSetup = async () => {
@@ -243,6 +107,15 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
     }
   };
 
+  const handleCopyKey = () => {
+    if (twoFactorSetupData?.secret) {
+      navigator.clipboard.writeText(twoFactorSetupData.secret);
+      setCopied(true);
+      showSuccess('Secret key copied to clipboard!');
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
   return (
     <div>
       <h3 className="settings-section-title">
@@ -296,64 +169,163 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
 
       {/* 2FA Setup Modal Wizard */}
       {show2FaModal && twoFactorSetupData && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="card" style={{ width: '90%', maxWidth: '480px', position: 'relative', padding: '1.5rem' }}>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1.5rem'
+        }}>
+          <div style={{
+            backgroundColor: 'var(--card-bg, #ffffff)',
+            color: 'var(--text-color, #0f172a)',
+            borderRadius: '1rem',
+            border: '1px solid var(--border-color, #e2e8f0)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+            maxWidth: '460px',
+            width: '100%',
+            padding: '1.75rem',
+            position: 'relative'
+          }}>
             <button
               type="button"
               onClick={() => setShow2FaModal(false)}
-              style={{ position: 'absolute', right: '1rem', top: '1rem', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}
+              style={{
+                position: 'absolute',
+                right: '1.25rem',
+                top: '1.25rem',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-secondary, #64748b)',
+                cursor: 'pointer',
+                padding: '0.25rem',
+                borderRadius: '0.375rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
             >
               <X size={20} />
             </button>
 
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-              <QrCode size={22} style={{ color: 'var(--primary-color, #38bdf8)' }} /> Set Up Two-Factor Authentication
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+              <QrCode size={24} style={{ color: 'var(--primary-color, #38bdf8)' }} />
+              Set Up Two-Factor Authentication
             </h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              1. Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary, #64748b)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              1. Scan this QR code with your authenticator app (Google Authenticator, Authy, Microsoft Authenticator):
             </p>
 
-            <div style={{ background: 'var(--bg-tertiary)', padding: '1.25rem', borderRadius: '0.75rem', textAlign: 'center', marginBottom: '1.25rem', border: '1px solid var(--border-color)' }}>
-              <div style={{ display: 'inline-block', background: '#ffffff', padding: '0.75rem', borderRadius: '0.75rem', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)', marginBottom: '0.85rem' }}>
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                    twoFactorSetupData.otpauthUrl || `otpauth://totp/BankPro?secret=${twoFactorSetupData.secret}&issuer=BankPro`
-                  )}`}
-                  alt="2FA QR Code"
-                  style={{ width: '180px', height: '180px', display: 'block' }}
-                />
+            <div style={{
+              background: 'var(--bg-tertiary, #f8fafc)',
+              padding: '1.25rem',
+              borderRadius: '0.875rem',
+              border: '1px solid var(--border-color, #e2e8f0)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              marginBottom: '1.25rem'
+            }}>
+              <div style={{
+                background: '#ffffff',
+                padding: '0.75rem',
+                borderRadius: '0.75rem',
+                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '196px',
+                height: '196px',
+                marginBottom: '1rem'
+              }}>
+                {qrCodeUrl ? (
+                  <img
+                    src={qrCodeUrl}
+                    alt="2FA QR Code"
+                    style={{ width: '180px', height: '180px', display: 'block', borderRadius: '0.5rem' }}
+                  />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary, #64748b)' }}>
+                    <Loader2 className="animate-spin" size={28} style={{ color: 'var(--primary-color, #38bdf8)' }} />
+                    <span style={{ fontSize: '0.75rem' }}>Generating QR Code...</span>
+                  </div>
+                )}
               </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+
+              <div style={{ width: '100%', fontSize: '0.8rem', color: 'var(--text-secondary, #64748b)', marginBottom: '0.5rem', textAlign: 'left' }}>
                 Or enter secret key manually:
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <code style={{ fontSize: '1rem', fontWeight: 'bold', letterSpacing: '1.5px', color: 'var(--primary-color, #38bdf8)' }}>
+              <div style={{
+                width: '100%',
+                background: 'var(--card-bg, #ffffff)',
+                border: '1px solid var(--border-color, #e2e8f0)',
+                borderRadius: '0.625rem',
+                padding: '0.5rem 0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.5rem'
+              }}>
+                <code style={{
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  letterSpacing: '1.5px',
+                  fontFamily: 'monospace',
+                  color: 'var(--primary-color, #0284c7)',
+                  wordBreak: 'break-all'
+                }}>
                   {twoFactorSetupData.secret}
                 </code>
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
-                  onClick={() => {
-                    navigator.clipboard.writeText(twoFactorSetupData.secret);
-                    showSuccess('Secret key copied to clipboard!');
+                  style={{
+                    padding: '0.35rem 0.65rem',
+                    fontSize: '0.75rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    whiteSpace: 'nowrap'
                   }}
+                  onClick={handleCopyKey}
                 >
-                  <Copy size={13} /> Copy Key
+                  {copied ? (
+                    <>
+                      <Check size={14} style={{ color: '#10b981' }} /> Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} /> Copy Key
+                    </>
+                  )}
                 </button>
               </div>
             </div>
 
             <form onSubmit={handleVerify2FaCode}>
               <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                <label className="form-label">2. Enter 6-digit code from Authenticator App:</label>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block' }}>
+                  2. Enter 6-digit code from Authenticator App:
+                </label>
                 <input
                   type="text"
                   className="form-input"
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="e.g. 123456"
+                  placeholder="000000"
                   maxLength={6}
+                  style={{
+                    textAlign: 'center',
+                    letterSpacing: '0.5rem',
+                    fontSize: '1.35rem',
+                    fontWeight: 700,
+                    fontFamily: 'monospace',
+                    padding: '0.625rem'
+                  }}
                   autoFocus
                   required
                 />
@@ -364,7 +336,13 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={verifying2Fa}>
-                  {verifying2Fa ? 'Verifying...' : 'Verify & Enable'}
+                  {verifying2Fa ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Loader2 className="animate-spin" size={16} /> Verifying...
+                    </span>
+                  ) : (
+                    'Verify & Enable'
+                  )}
                 </button>
               </div>
             </form>
@@ -398,3 +376,4 @@ const SecurityTab = ({ twoFactorEnabled, onTwoFactorChange }) => {
 };
 
 export default SecurityTab;
+

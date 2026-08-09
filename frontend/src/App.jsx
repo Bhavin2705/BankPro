@@ -29,13 +29,15 @@ import {
   Users,
 } from './pages';
 
-import { api, checkBackendHealth } from './utils/api';
+import { api, checkBackendHealth, clearLegacyLocalStorage } from './utils/api';
 import { setExchangeRates } from './utils/currency';
 import {
   canAccessAdminFeatures,
   initializeUsers,
+  isSessionActive,
   logout,
   refreshUserData,
+  writeStoredUser,
 } from './utils/auth';
 
 function App() {
@@ -76,6 +78,7 @@ function App() {
   };
 
   const handleLogin = (userData) => {
+    writeStoredUser(userData);
     setUser(userData);
     applyTheme(userData);
     setStatus({ type: 'ready' });
@@ -102,13 +105,7 @@ function App() {
     setUser((prevUser) => {
       const nextUser = typeof updatedUser === 'function' ? updatedUser(prevUser) : updatedUser;
       applyTheme(nextUser);
-      if (typeof window !== 'undefined') {
-        try {
-          window.localStorage.setItem('bank_auth_user', JSON.stringify(nextUser));
-        } catch {
-          // ignore
-        }
-      }
+      writeStoredUser(nextUser);
       return nextUser;
     });
   };
@@ -130,6 +127,7 @@ function App() {
   };
 
   const initializeApp = async ({ silent = false } = {}) => {
+    clearLegacyLocalStorage();
     if (!silent) setStatus({ type: 'loading', message: 'Preparing Your Workspace', attempt: 0, error: null });
 
     const pathname = window.location.pathname;
@@ -155,6 +153,14 @@ function App() {
       ]).catch(() => {});
 
       if (!isAuthPage) {
+        if (!isSessionActive()) {
+          await logout();
+          setUser(null);
+          applyTheme(null);
+          setStatus({ type: 'ready' });
+          return;
+        }
+
         const freshUser = await Promise.race([
           refreshUserData(),
           new Promise((_, r) => setTimeout(() => r(new Error('refresh timeout')), 5000)),
