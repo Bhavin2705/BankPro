@@ -14,8 +14,8 @@ const { getConfig } = require('./config');
 
 const createApp = () => {
     const app = express();
+    app.set('trust proxy', 1);
     const config = getConfig();
-
     app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
     app.use(
         cookieParser(),
