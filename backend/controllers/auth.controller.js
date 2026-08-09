@@ -37,6 +37,7 @@ const register = async (req, res) => {
     }
 
     const user = new User({ name, email, phone, password, pin, bankDetails, balance: 0 });
+    appendLoginHistoryEntry(user, req);
     await user.save();
 
     const token = generateToken(user._id);
