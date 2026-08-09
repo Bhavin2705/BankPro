@@ -10,7 +10,8 @@
         "init": "node init.js",
         "seed:admin": "node seeders/seedAdmin.js",
         "seed:banks": "node seeders/seedBanks.js",
-        "seed": "node seeders/index.js"
+        "seed": "node seeders/index.js",
+        "db:reset": "node scripts/resetDatabase.js"
     },
     "jest": {
         "globalSetup": "./tests/globalSetup.js",
