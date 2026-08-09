@@ -208,13 +208,21 @@ const Cards = ({ user }) => {
   };
 
   const closeCard = (cardId, cardNumber) => {
+    const card = cards.find((c) => getCardId(c) === cardId);
+    if (card?.statusRequest?.status === 'pending') {
+      showError('A status request is already pending bank admin review for this card.');
+      return;
+    }
     const last4 = cardNumber ? String(cardNumber).slice(-4) : '----';
+    const isUserRole = user?.role !== 'admin';
     setModal({
       open: true,
       cardId,
       title: 'Close Card',
-      message: `Are you sure you want to close the card ending with ${last4}? This will remove it from your cards list.`,
-      confirmText: 'Close',
+      message: isUserRole
+        ? `Are you sure you want to request closure for the card ending with ${last4}? This will submit a closure request to bank admin for approval.`
+        : `Are you sure you want to close the card ending with ${last4}? This will permanently close the card.`,
+      confirmText: isUserRole ? 'Submit Request' : 'Close Card',
       cancelText: 'Cancel',
     });
   };
@@ -251,17 +259,21 @@ const Cards = ({ user }) => {
 
     try {
       setClosingCardId(modal.cardId);
-      const res = await api.cards.updateStatus(modal.cardId, { status: 'closed' });
+      const isUserRole = user?.role !== 'admin';
+      const res = isUserRole
+        ? await api.cards.requestStatusChange(modal.cardId, { status: 'closed' })
+        : await api.cards.updateStatus(modal.cardId, { status: 'closed' });
+
       if (res.success) {
+        showSuccess(res.message || 'Card closure request submitted. Pending bank admin approval.');
         setModal({ open: false });
         await loadCards();
       } else {
-        showError(res.error || 'Failed to close card');
+        showError(res.error || 'Failed to submit card closure request');
         setModal({ open: false });
       }
     } catch (err) {
-      
-      showError(err.message || 'Failed to close card');
+      showError(err.message || 'Failed to submit card closure request');
       setModal({ open: false });
     } finally {
       setClosingCardId(null);

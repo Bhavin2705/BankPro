@@ -1,4 +1,4 @@
-﻿import { CreditCard, Eye, EyeOff, Lock, Unlock } from 'lucide-react';
+import { CreditCard, Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 
 const CardsList = ({
   cards,
@@ -38,8 +38,13 @@ const CardsList = ({
         const isLockedByStatus = isNonToggleStatus(card.status);
         const hasPendingRequest = card.statusRequest?.status === 'pending';
         const requestedStatus = card.statusRequest?.requestedStatus;
-        const pendingLabel = requestedStatus === 'inactive' ? 'Lock request pending review' : 'Unlock request pending review';
+        const pendingLabel = requestedStatus === 'closed'
+          ? 'Closure Pending Approval'
+          : requestedStatus === 'inactive'
+            ? 'Lock request pending review'
+            : 'Unlock request pending review';
         const lockButtonDisabled = isUpdatingCard || isClosingCard || isBlockedByBank || isLockedByStatus || hasPendingRequest;
+        const closeButtonDisabled = isUpdatingCard || isClosingCard || hasPendingRequest;
         const lockButtonTitle = isBlockedByBank
           ? 'Card blocked by bank. Contact support.'
           : hasPendingRequest
@@ -80,7 +85,21 @@ const CardsList = ({
                     </span>
                   </span>
                   {hasPendingRequest && (
-                    <span className="card-item-meta-value card-item-request-pending">{pendingLabel}</span>
+                    <span
+                      className="card-item-meta-value card-item-request-pending"
+                      style={
+                        requestedStatus === 'closed'
+                          ? {
+                              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                              color: '#dc2626',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              fontWeight: 700,
+                            }
+                          : {}
+                      }
+                    >
+                      ⏳ {pendingLabel}
+                    </span>
                   )}
                   <span className="card-item-meta-value card-item-cvv-wrap">
                     CVV:
@@ -130,10 +149,10 @@ const CardsList = ({
                   <button
                     onClick={() => closeCard(cardId, card.cardNumber)}
                     className="card-item-action-btn card-item-main-btn card-item-main-btn-close"
-                    title="Close card"
-                    disabled={isUpdatingCard || isClosingCard}
+                    title={hasPendingRequest && requestedStatus === 'closed' ? 'Closure pending bank review' : 'Close card'}
+                    disabled={closeButtonDisabled}
                   >
-                    {isClosingCard ? 'Closing...' : 'Close'}
+                    {isClosingCard ? 'Submitting...' : 'Close'}
                   </button>
                 </div>
               </div>

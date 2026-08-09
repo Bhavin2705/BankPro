@@ -184,7 +184,11 @@ const requestCardStatusChange = async (req, res) => {
         throw error;
     }
 
-    const requestedStatus = card.status === 'active' ? 'inactive' : 'active';
+    const targetStatus = req.body?.status || req.body?.requestedStatus;
+    const requestedStatus = targetStatus && ['active', 'inactive', 'closed'].includes(targetStatus)
+        ? targetStatus
+        : (card.status === 'active' ? 'inactive' : 'active');
+
     if (card.statusRequest?.status === 'pending' && card.statusRequest?.requestedStatus === requestedStatus) {
         return res.status(200).json({ success: true, message: 'Your request is already pending bank review.' });
     }
@@ -192,13 +196,14 @@ const requestCardStatusChange = async (req, res) => {
     card.statusRequest = { requestedStatus, status: 'pending', requestedBy: req.user._id, requestedAt: new Date(), reviewedBy: null, reviewedAt: null };
     await card.save();
 
+    const actionText = requestedStatus === 'closed' ? 'closure' : requestedStatus === 'inactive' ? 'lock' : 'unlock';
     await createInAppNotification({
         userId: req.user._id, type: 'account_update', title: 'Card Request Submitted',
-        message: `Your ${requestedStatus === 'inactive' ? 'lock' : 'unlock'} request for card ending with ${String(card.cardNumber || '').slice(-4)} is under review. Bank team will review it shortly.`,
+        message: `Your ${actionText} request for card ending with ${String(card.cardNumber || '').slice(-4)} is under review. Bank team will review it shortly.`,
         priority: 'medium', relatedId: card._id, relatedModel: 'Card', metadata: { category: 'card', requestedStatus }
     });
 
-    res.status(200).json({ success: true, message: 'Request submitted successfully. Bank will review your card status change request.' });
+    res.status(200).json({ success: true, message: `Your card ${actionText} request has been submitted for bank admin approval.` });
 };
 
 const reviewCardStatusRequest = async (req, res) => {
