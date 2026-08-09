@@ -1,80 +1,89 @@
-import { Building2 } from 'lucide-react';
+import { Building2, ShieldCheck, Lock, HelpCircle } from 'lucide-react';
 
-const BankTab = ({ user, bankData, handleFormKeyDown, handleBankChange, handleBankUpdate, loading }) => (
+const BankTab = ({ user, bankData }) => (
   <div>
-    <h3 className="settings-section-title">
-      <Building2 size={20} />
-      Bank Information
-    </h3>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+      <h3 className="settings-section-title" style={{ margin: 0 }}>
+        <Building2 size={20} />
+        Bank Information
+      </h3>
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.375rem',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        color: '#10b981',
+        border: '1px solid rgba(16, 185, 129, 0.25)',
+        padding: '0.35rem 0.75rem',
+        borderRadius: '2rem',
+        fontSize: '0.75rem',
+        fontWeight: 600
+      }}>
+        <ShieldCheck size={14} /> System Verified
+      </span>
+    </div>
 
-    <form onKeyDown={handleFormKeyDown} onSubmit={handleBankUpdate}>
-      <div className="settings-grid-300">
-        <div className="form-group">
-          <label className="form-label">Bank Name</label>
-          <input
-            type="text"
-            name="bankName"
-            className="form-input"
-            value={bankData.bankName}
-            onChange={handleBankChange}
-            placeholder="e.g. BankPro"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">IFSC Code</label>
-          <input
-            type="text"
-            name="ifscCode"
-            className="form-input"
-            value={bankData.ifscCode}
-            onChange={(e) => {
-              handleBankChange({
-                target: {
-                  name: 'ifscCode',
-                  value: e.target.value.toUpperCase()
-                }
-              });
-            }}
-            placeholder="e.g. SBIN0001234"
-            maxLength={11}
-            required
-          />
-          <small className="settings-help-text">
-            Keep these details accurate to avoid transfer and settlement issues.
-          </small>
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Branch Name</label>
-          <input
-            type="text"
-            name="branchName"
-            className="form-input"
-            value={bankData.branchName}
-            onChange={handleBankChange}
-          />
-        </div>
-      </div>
-
-      <div className="form-group settings-top-gap">
-        <label className="form-label">Account Number</label>
+    <div className="settings-grid-300">
+      <div className="form-group">
+        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          Bank Name <Lock size={12} style={{ color: 'var(--text-secondary, #94a3b8)' }} />
+        </label>
         <input
           type="text"
           className="form-input settings-readonly"
-          value={user.accountNumber || 'Not assigned'}
+          value={bankData?.bankName || user?.bankDetails?.bankName || 'BankPro'}
           disabled
+          readOnly
         />
       </div>
 
-      <div className="info-box">
-        Important: Your bank information is used for transfers and transactions. Make sure the details are accurate for successful transactions.
+      <div className="form-group">
+        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          IFSC Code <Lock size={12} style={{ color: 'var(--text-secondary, #94a3b8)' }} />
+        </label>
+        <input
+          type="text"
+          className="form-input settings-readonly"
+          value={bankData?.ifscCode || user?.bankDetails?.ifscCode || 'BNKP0000001'}
+          disabled
+          readOnly
+        />
       </div>
-      <button type="submit" className="btn btn-primary settings-top-gap" disabled={loading}>
-        {loading ? 'Saving...' : 'Save Bank Details'}
-      </button>
-    </form>
+
+      <div className="form-group">
+        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          Branch Name <Lock size={12} style={{ color: 'var(--text-secondary, #94a3b8)' }} />
+        </label>
+        <input
+          type="text"
+          className="form-input settings-readonly"
+          value={bankData?.branchName || user?.bankDetails?.branchName || 'Main Branch'}
+          disabled
+          readOnly
+        />
+      </div>
+    </div>
+
+    <div className="form-group settings-top-gap">
+      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+        Account Number <Lock size={12} style={{ color: 'var(--text-secondary, #94a3b8)' }} />
+      </label>
+      <input
+        type="text"
+        className="form-input settings-readonly"
+        value={user?.accountNumber || 'Not assigned'}
+        disabled
+        readOnly
+        style={{ letterSpacing: '0.05em', fontWeight: 600 }}
+      />
+    </div>
+
+    <div className="info-box" style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+      <HelpCircle size={18} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--primary-color, #0284c7)' }} />
+      <div style={{ fontSize: '0.85rem', lineHeight: 1.5 }}>
+        <strong>Official Bank Credentials:</strong> Your primary bank routing details and account number are issued by BankPro upon account setup and verification. To request a branch transfer or update account details, please contact BankPro Support.
+      </div>
+    </div>
   </div>
 );
 
