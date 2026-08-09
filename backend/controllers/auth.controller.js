@@ -17,6 +17,8 @@ const {
     blacklistToken
 } = require('../utils/auth');
 
+const { verifyTotpCode } = require('../utils/totp');
+
 const hashToken = token => crypto.createHash('sha256').update(token).digest('hex');
 
 const findByResetToken = async token => {
@@ -77,8 +79,14 @@ const login = async (req, res) => {
 
     if (user.security?.twoFactorEnabled) {
         if (!otp) return initiateTwoFactorLogin(user, req, res, emailService.sendLoginOtpEmail);
-        if (!verifyTwoFactorOtp(user, otp)) {
-            const error = new Error('Invalid or expired OTP');
+
+        const isTotpValid = user.security?.twoFactorSecret
+            ? await verifyTotpCode(otp, user.security.twoFactorSecret)
+            : false;
+        const isEmailOtpValid = verifyTwoFactorOtp(user, otp);
+
+        if (!isTotpValid && !isEmailOtpValid) {
+            const error = new Error('Invalid 6-digit verification code');
             error.statusCode = 400;
             throw error;
         }
