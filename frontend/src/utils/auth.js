@@ -48,6 +48,17 @@ const readStoredUser = () => {
   } catch {
     return null;
   }
+export const isPageReload = () => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const navEntries = performance.getEntriesByType('navigation');
+    if (navEntries && navEntries.length > 0) {
+      return navEntries[0].type === 'reload';
+    }
+    return Boolean(window.performance && window.performance.navigation && window.performance.navigation.type === 1);
+  } catch {
+    return false;
+  }
 };
 
 export const isSessionActive = () => {

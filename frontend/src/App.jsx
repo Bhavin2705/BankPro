@@ -34,6 +34,7 @@ import { setExchangeRates } from './utils/currency';
 import {
   canAccessAdminFeatures,
   initializeUsers,
+  isPageReload,
   isSessionActive,
   logout,
   refreshUserData,
@@ -46,6 +47,23 @@ function App() {
   const [darkMode, setDarkMode] = useState(false);
 
   const retryTimeoutRef = useRef(null);
+
+  // Send beacon logout on tab close
+  useEffect(() => {
+    const handlePageHide = (e) => {
+      if (!e.persisted) {
+        try {
+          if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+            navigator.sendBeacon(`${API_BASE_URL}/auth/logout`);
+          }
+        } catch {
+          // silent
+        }
+      }
+    };
+    window.addEventListener('pagehide', handlePageHide);
+    return () => window.removeEventListener('pagehide', handlePageHide);
+  }, []);
 
   // ──────────────────────────────────────────────
   //  Helpers
@@ -153,7 +171,7 @@ function App() {
       ]).catch(() => {});
 
       if (!isAuthPage) {
-        if (!isSessionActive()) {
+        if (!isPageReload() || !isSessionActive()) {
           await logout();
           setUser(null);
           applyTheme(null);
